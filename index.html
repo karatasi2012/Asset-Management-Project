@@ -130,6 +130,15 @@ dl.def dt{font-weight:600} dl.def dd{margin:0;color:var(--muted)}
 .mfoot{display:flex;gap:8px;justify-content:flex-end;margin-top:8px;flex-wrap:wrap}
 #toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:8px;font-size:13px;z-index:60;max-width:calc(100% - 32px)}
 #toast[hidden]{display:none}
+a{color:var(--accent)}
+.ins{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:12px}
+.ins li{padding-bottom:12px;border-bottom:1px solid var(--line)}
+.ins li:last-child{border:0;padding-bottom:0}
+.ins b{display:block}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.note{background:var(--surface2);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13px;margin-top:10px}
+.note.warn{background:var(--warn-bg);color:var(--warn);border-color:transparent}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
 @media (max-width:560px){.brand h1{font-size:22px}.hb{grid-template-columns:90px 1fr auto}}
 @media (prefers-reduced-motion:no-preference){.btn{transition:border-color .12s}}
 </style>
@@ -181,7 +190,7 @@ const BK = [
 ];
 const KEYS = ['dep', 'lease', 'fin', 'fuel', 'labour', 'contractor', 'spares', 'cons', 'otherDirect', 'insurance', 'licence', 'driver', 'otherInd', 'overhead', 'downtime', 'own', 'direct', 'indirect', 'total', 'km', 'fuelL', 'jobs', 'downDays'];
 
-let S = { settings: { currency: 'KES', overheadPct: 10, labourRate: 2500 }, vehicles: [], items: [], jobs: [], expenses: [], period: { preset: 'ytd', from: '', to: '' }, example: false };
+let S = { settings: { currency: 'KES', overheadPct: 10, labourRate: 2500 }, vehicles: [], items: [], jobs: [], expenses: [], insights: {}, period: { preset: 'ytd', from: '', to: '' }, example: false };
 
 function holdEnd(v) { return v.disposed ? D(v.disposed) + DAY : Infinity; }
 
@@ -393,7 +402,7 @@ function seed() {
   expenses.push({ id: uid(), vehicleId: probox.id, date: (y - 1) + '-02-11', category: 'fines', amount: 10000, odometer: 0, litres: 0, vendor: '', coverFrom: '', coverTo: '', notes: 'Traffic fine' });
   expenses.push({ id: uid(), vehicleId: dmax.id, date: y + '-03-04', category: 'cleaning', amount: 8500, odometer: 0, litres: 0, vendor: 'Car wash', coverFrom: '', coverTo: '', notes: 'Deep clean after site work' });
   const vehicles = gen.map(g => g[0]);
-  return { settings: { currency: 'KES', overheadPct: 10, labourRate: 2500 }, vehicles, items, jobs, expenses, period: { preset: 'ytd', from: '', to: '' }, example: true };
+  return { settings: { currency: 'KES', overheadPct: 10, labourRate: 2500, region: 'Kenya' }, vehicles, items, jobs, expenses, insights: {}, period: { preset: 'ytd', from: '', to: '' }, example: true };
 }
 
 /* ---------- period ---------- */
@@ -709,6 +718,7 @@ function vLife() {
     k('', 'Distance driven', nf.format(c.km) + ' km', 'odometer ' + nf.format(latestOdo(v))) +
     k('', 'Cost per km', perKm(c.total, c.km), 'running only: ' + perKm(run, c.km)) + '</div>';
 
+  h += insightsPanel(v);
   const mx = Math.max(1, ...BK.map(b => c[b[0]]));
   h += '<div class="grid g2"><section class="panel"><h3>Where the money went</h3><p class="muted small">Whole life of this car</p>';
   BK.filter(b => c[b[0]] > 0.5).sort((a, b) => c[b[0]] - c[a[0]]).forEach(b => { h += '<div class="hb"><span class="nm" title="' + esc(b[1]) + '">' + esc(b[1]) + '</span><div class="trk"><div class="' + clsBg[b[2]] + '" style="width:' + (c[b[0]] / mx * 100) + '%"></div></div><span class="num">' + mm(c[b[0]]) + '</span></div>'; });
@@ -740,6 +750,9 @@ function vData() {
   h += '<section class="panel"><h3>Costing settings</h3><div class="fg" style="margin-top:10px">' +
     fld('Currency code', 'sCur', 'text', s.currency) + fld('Workshop overhead (% of servicing cost)', 'sOh', 'number', s.overheadPct, 'step="0.1" min="0"') + fld('Default labour rate per hour', 'sLab', 'number', s.labourRate, 'min="0"') +
     '</div><p class="muted small" style="margin-top:10px">Changes save as you type. The overhead percentage applies to every job in every period.</p></section>';
+  h += '<section class="panel"><h3>AI research agent</h3><div class="fg" style="margin-top:10px">' +
+    fld('Country or market', 'sReg', 'text', s.region || '', 'placeholder="Kenya"') + fld('Agent service address', 'sAgUrl', 'url', AG.url, 'placeholder="https://your-agent.workers.dev"') + fld('Agent access token', 'sAgTok', 'password', AG.token, 'autocomplete="off"') +
+    '</div><p class="muted small" style="margin-top:10px">Leave the address empty to use Claude\'s own knowledge when this page is opened in Claude. A service address enables live web research. The address and token stay in this browser and are not included in backups.</p></section>';
   h += '<section class="panel"><h3>Back up and move your data</h3><p class="muted" style="margin:6px 0 10px">Data lives in this browser only. Save a backup file regularly, and use it to restore or move to another device.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-act="exp-json" type="button">Backup (JSON)</button><button class="btn" data-act="exp-vehicles" type="button">Vehicle register (CSV)</button><button class="btn" data-act="exp-expenses" type="button">Expenses (CSV)</button><button class="btn" data-act="exp-costs" type="button">Cost report (CSV)</button><button class="btn" data-act="imp" type="button">Restore from backup</button></div></section>';
   h += '<section class="panel"><h3>Start over</h3><p class="muted" style="margin:6px 0 10px">Remove every vehicle, expense, job and stock item, or reload the example data.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn danger" data-act="clear-all" type="button">Clear everything</button><button class="btn" data-act="load-example" type="button">Load example data</button></div></section></div>';
   return h;
@@ -896,6 +909,153 @@ function jobForm() {
   if (S.items.length) add();
 }
 
+/* ---------- car insights agent ---------- */
+const AGK = 'assetLedger.fleet.agent';
+let AG = { url: '', token: '' };
+try { AG = Object.assign(AG, JSON.parse(localStorage.getItem(AGK) || '{}')); } catch (e) { }
+const saveAG = () => { try { localStorage.setItem(AGK, JSON.stringify(AG)); } catch (e) { } };
+let insightBusy = '', insightErr = '', insightCtl = null, hasSample = false, samplePromise = null;
+
+function getSample() {
+  if (typeof claude === 'undefined' || !claude || typeof claude.use !== 'function') return Promise.resolve(null);
+  if (!samplePromise) samplePromise = Promise.resolve(claude.use('sample')).catch(() => null);
+  return samplePromise;
+}
+const str = (x, n) => String(x == null ? '' : x).slice(0, n || 400);
+
+/* Only these facts leave the page: no registration, driver, department or amounts. */
+function carFacts(v) {
+  const now = D(todayISO()) + DAY, toEx = Math.min(holdEnd(v), now);
+  const from12 = Math.max(D(v.acquired), toEx - 365 * DAY);
+  const c = toEx > from12 ? costFor(v, from12, toEx) : null;
+  const rem = v.serviceIntervalKm > 0 ? lastServiceOdo(v) + v.serviceIntervalKm - latestOdo(v) : null;
+  const recent = S.jobs.filter(j => j.vehicleId === v.id).sort((a, b) => b.date.localeCompare(a.date)).slice(0, 6).map(j => str(j.date.slice(0, 7) + ' ' + j.type + ': ' + j.description, 90));
+  return {
+    make: str(v.make, 40), model: str(v.model, 60), year: Number(v.year) || 0, fuel: str(v.fuel, 20), region: str(S.settings.region, 60),
+    ageMonths: Math.round((toEx - D(v.acquired)) / DAY / 30.4375), odometerKm: Math.round(latestOdo(v)),
+    kmLast12Months: c ? Math.round(c.km) : 0, kmPerLitreLast12Months: c && c.kmpl ? Math.round(c.kmpl * 10) / 10 : null,
+    kmToNextService: rem === null ? null : Math.round(rem), recentJobs: recent
+  };
+}
+
+function insightPrompt(f, web) {
+  const facts = [
+    'Fuel: ' + f.fuel, 'Age in our fleet: ' + f.ageMonths + ' months', 'Odometer: ' + f.odometerKm + ' km',
+    'Driven in the last 12 months: ' + f.kmLast12Months + ' km',
+    'Fuel economy over the last 12 months: ' + (f.kmPerLitreLast12Months ? f.kmPerLitreLast12Months + ' km per litre' : 'not recorded'),
+    'Distance to next service: ' + (f.kmToNextService === null ? 'not tracked' : f.kmToNextService + ' km'),
+    'Recent jobs: ' + (f.recentJobs.length ? f.recentJobs.join('; ') : 'none recorded')
+  ].join('\n');
+  return [
+    'You are a fleet vehicle advisor helping a company in ' + (f.region || 'East Africa') + ' run its cars economically and reliably.',
+    'Vehicle: ' + [f.year || '', f.make, f.model].filter(Boolean).join(' ') + '.',
+    'Facts from the company records:\n' + facts,
+    web ? 'Search the web for the latest official and reputable information on this model and its recent updates. Prefer manufacturer, regulator and well-known motoring sources, and note the date of what you find.'
+      : 'You cannot browse the web in this request. Use only what you already know, say so plainly in "summary", and do not present anything as the very latest.',
+    'Cover: (1) advancements: notable recent updates, facelifts, new generation, engine, safety, efficiency or software changes, and any recalls or service campaigns that apply to this model and year; (2) improvements: practical, safe, legal ways to improve this car\'s performance, reliability, fuel economy or running cost, tailored to the facts above (maintenance practice, tyres and pressures, driving habits, genuine updates and parts, fuel quality, helpful accessories); (3) watchouts: known weak points for this model and what to inspect.',
+    'Rules: never suggest anything that removes emission equipment, voids the warranty, or is unsafe or illegal. If unsure, say so and mark low confidence. Say when to check with the dealer. Keep each item short and concrete.',
+    'Reply with only one JSON object and no other text: {"summary": string (2-3 sentences), "advancements": [{"title": string, "detail": string, "when": string}] (up to 6), "improvements": [{"action": string, "why": string, "effect": string, "effort": "low"|"medium"|"high", "caution": string}] (up to 8), "watchouts": [{"issue": string, "detail": string}] (up to 5), "fleetNote": string (one sentence on what the company records suggest), "confidence": "high"|"medium"|"low"}'
+  ].join('\n\n');
+}
+
+function cleanInsight(d) {
+  d = d && typeof d === 'object' ? d : {};
+  const arr = (a, n) => (Array.isArray(a) ? a.slice(0, n) : []);
+  const o = x => (x && typeof x === 'object' ? x : {});
+  return {
+    summary: str(d.summary, 700),
+    advancements: arr(d.advancements, 6).map(x => ({ title: str(o(x).title, 140), detail: str(o(x).detail, 500), when: str(o(x).when, 30) })),
+    improvements: arr(d.improvements, 8).map(x => ({ action: str(o(x).action, 160), why: str(o(x).why, 400), effect: str(o(x).effect, 200), effort: ['low', 'medium', 'high'].includes(o(x).effort) ? o(x).effort : '', caution: str(o(x).caution, 300) })),
+    watchouts: arr(d.watchouts, 6).map(x => ({ issue: str(o(x).issue, 140), detail: str(o(x).detail, 400) })),
+    fleetNote: str(d.fleetNote, 500),
+    confidence: ['high', 'medium', 'low'].includes(d.confidence) ? d.confidence : ''
+  };
+}
+const cleanSources = a => (Array.isArray(a) ? a : []).filter(x => x && /^https?:\/\//i.test(String(x.url))).slice(0, 12).map(x => ({ title: str(x.title || x.url, 140), url: String(x.url).slice(0, 500) }));
+
+async function runWeb(f, signal) {
+  const r = await fetch(AG.url, { method: 'POST', headers: { 'content-type': 'application/json', 'x-app-token': AG.token || '' }, body: JSON.stringify({ car: f }), signal });
+  if (!r.ok) { let m = 'HTTP ' + r.status; try { const j = await r.json(); if (j.error) m = j.error; } catch (e) { } throw new Error(m); }
+  const j = await r.json();
+  if (!j.data) throw new Error('the service returned no readable result');
+  return { at: todayISO(), mode: 'web', data: cleanInsight(j.data), sources: cleanSources(j.sources) };
+}
+async function runKnowledge(f, signal) {
+  const sample = await getSample();
+  const data = await sample.json(insightPrompt(f, false), { signal, modelTier: 'default' });
+  return { at: todayISO(), mode: 'knowledge', data: cleanInsight(data), sources: [] };
+}
+function insightMsg(e) {
+  const c = e && e.code;
+  if (c === 'not_granted' || c === 'sampling_disabled' || c === 'not_declared') return 'Claude was not allowed to run for this page. Allow it when asked, or reopen the page and try again.';
+  if (c === 'rate_limited') return 'Too many requests, or your Claude usage limit was reached. Try again later.';
+  if (c === 'invalid_json' || c === 'empty_completion' || c === 'refused') return 'The answer could not be read. Try again.';
+  const m = e && e.message ? e.message : '';
+  if (/failed to fetch|networkerror|load failed/i.test(m)) return 'Could not reach the agent service. Check its address in Data and settings, and that this page is allowed to call it.';
+  return 'Could not get insights' + (m ? ' (' + m + ')' : '') + '. Try again.';
+}
+async function runInsights(vid) {
+  const v = vget(vid); if (!v) return;
+  const f = carFacts(v);
+  insightBusy = vid; insightErr = ''; insightCtl = new AbortController(); render();
+  const ctl = insightCtl;
+  try {
+    let res;
+    if (AG.url) {
+      try { res = await runWeb(f, ctl.signal); }
+      catch (e) {
+        if (ctl.signal.aborted) throw e;
+        if (!(await getSample())) throw e;
+        insightErr = 'Live web research failed (' + (e.message || 'error') + '). This result comes from Claude\'s own knowledge instead.';
+        res = await runKnowledge(f, ctl.signal);
+      }
+    } else {
+      if (!(await getSample())) throw new Error('not set up');
+      res = await runKnowledge(f, ctl.signal);
+    }
+    S.insights[vid] = res; save();
+  } catch (e) {
+    if (!ctl.signal.aborted) insightErr = insightMsg(e);
+  } finally { insightBusy = ''; insightCtl = null; render(); }
+}
+async function copyText(title, text) {
+  try { await navigator.clipboard.writeText(text); toast('Copied'); return; } catch (e) { }
+  openModal(title, '<textarea id="cpy" readonly style="min-height:240px;font-family:var(--f-mono);font-size:12px">' + esc(text) + '</textarea>', null);
+  $('#cpy').select();
+}
+
+function insightsPanel(v) {
+  const rec = S.insights[v.id];
+  const web = !!AG.url, canRun = web || hasSample;
+  const busy = insightBusy === v.id;
+  const name = [v.make, v.model, v.year].filter(Boolean).join(' ');
+  let h = '<section class="panel" style="margin-bottom:16px"><div class="bar" style="margin:0 0 4px"><div><h3>Car insights agent</h3><p class="muted small">Latest developments for the ' + esc(name) + ' and ways to improve how it performs</p></div><div class="btns">';
+  if (busy) h += '<button class="btn" data-act="stop-insights" type="button">Stop</button>';
+  else if (canRun) h += '<button class="btn primary" data-act="run-insights" data-id="' + v.id + '" type="button">' + (rec ? 'Refresh research' : 'Research this model') + '</button>';
+  else h += '<button class="btn primary" data-act="copy-prompt" data-id="' + v.id + '" type="button">Copy research prompt</button>';
+  h += '</div></div>';
+  h += '<p class="muted small">' + (web ? 'Will search the web for this model.' : (hasSample ? 'Will use Claude\'s own knowledge. It cannot browse the web from this page, so it may miss recent news.' : 'No AI service is connected yet.')) + ' It runs only when you click, and reuses the saved result until you refresh. It sends the make, model, year, fuel, distance, fuel economy and recent job types. It does not send the registration, driver or any amounts.</p>';
+  if (busy) h += '<div class="note">Researching ' + esc(name) + '. This can take a minute.</div>';
+  if (insightErr && !busy) h += '<div class="note warn">' + esc(insightErr) + '</div>';
+  if (!canRun && !busy) h += '<div class="note">To let the agent search the web, deploy the small agent service from the <b>agent</b> folder of the project, then paste its address in <b>Data and settings</b>. Until then, copy the prompt above into any AI chat that can search the web and paste the answer back into your notes.</div>';
+  if (rec && rec.data) {
+    const d = rec.data;
+    h += '<div class="tags"><span class="chip ' + (rec.mode === 'web' ? 'ok' : 'warn') + '">' + (rec.mode === 'web' ? 'Live web research' : 'Claude knowledge, not live web') + '</span><span class="chip">' + esc(rec.at) + '</span>' + (d.confidence ? '<span class="chip">confidence: ' + esc(d.confidence) + '</span>' : '') + '</div>';
+    if (d.summary) h += '<p style="margin-top:10px">' + esc(d.summary) + '</p>';
+    if (d.fleetNote) h += '<div class="note"><b>From your records:</b> ' + esc(d.fleetNote) + '</div>';
+    h += '<div class="grid g2" style="margin-top:12px"><div><h3>Latest advancements</h3>';
+    h += d.advancements.length ? '<ul class="ins">' + d.advancements.map(a => '<li><b>' + esc(a.title) + (a.when ? ' <span class="muted small">· ' + esc(a.when) + '</span>' : '') + '</b>' + esc(a.detail) + '</li>').join('') + '</ul>' : '<p class="muted small" style="margin-top:8px">Nothing reported.</p>';
+    h += '</div><div><h3>Ways to improve performance</h3>';
+    h += d.improvements.length ? '<ul class="ins">' + d.improvements.map(a => '<li><b>' + esc(a.action) + '</b>' + esc(a.why) + (a.effect ? '<div class="muted small">Expected effect: ' + esc(a.effect) + '</div>' : '') + '<div class="tags">' + (a.effort ? '<span class="chip">effort: ' + esc(a.effort) + '</span>' : '') + (a.caution ? '<span class="chip warn">' + esc(a.caution) + '</span>' : '') + '</div></li>').join('') + '</ul>' : '<p class="muted small" style="margin-top:8px">Nothing reported.</p>';
+    h += '</div></div>';
+    if (d.watchouts.length) h += '<h3 style="margin-top:14px">Watch-outs</h3><ul class="ins">' + d.watchouts.map(a => '<li><b>' + esc(a.issue) + '</b>' + esc(a.detail) + '</li>').join('') + '</ul>';
+    if (rec.mode === 'web') h += '<h3 style="margin-top:14px">Sources</h3>' + (rec.sources.length ? '<ul class="ins">' + rec.sources.map(x => '<li><a href="' + esc(x.url) + '" target="_blank" rel="noopener noreferrer">' + esc(x.title) + '</a></li>').join('') + '</ul>' : '<p class="muted small">The service returned no source links.</p>');
+    else h += '<div class="note warn" style="margin-top:14px">This answer is not from a live web search, so recalls, new models and prices may be out of date. Confirm with the dealer or the manufacturer before acting.</div>';
+    h += '<p class="muted small" style="margin-top:12px">Suggestions are general. Check anything that touches the engine, brakes, tyres or warranty with the dealer first.</p>';
+  }
+  return h + '</section>';
+}
+
 /* ---------- export / import ---------- */
 function csvCell(v) { v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
 const toCsv = rows => rows.map(r => r.map(csvCell).join(',')).join('\n');
@@ -919,7 +1079,7 @@ function importForm() {
     try {
       const o = JSON.parse($('#impTxt').value);
       if (!o || !Array.isArray(o.vehicles) || !Array.isArray(o.items) || !Array.isArray(o.jobs)) throw new Error('shape');
-      S = Object.assign({ settings: { currency: 'KES', overheadPct: 10, labourRate: 2500 }, expenses: [], period: { preset: 'ytd', from: '', to: '' }, example: false }, o);
+      S = Object.assign({ settings: { currency: 'KES', overheadPct: 10, labourRate: 2500, region: 'Kenya' }, expenses: [], insights: {}, period: { preset: 'ytd', from: '', to: '' }, example: false }, o);
       if (!S.period || !S.period.preset) S.period = { preset: 'ytd', from: '', to: '' };
       if (S.period.preset !== 'custom' || !S.period.from) applyPreset(S.period.preset === 'custom' ? 'ytd' : S.period.preset);
       closeModal(); renderPeriod(); persist(); toast('Backup restored');
@@ -978,7 +1138,7 @@ document.addEventListener('click', ev => {
   });
   if (act === 'rm-line') return t.closest('.ln').remove();
   if (act === 'sched') { schedVeh = id; render(); const e = $('#sched'); if (e) e.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
-  if (act === 'clear-all') return armDelete(t, () => { S = { settings: S.settings, vehicles: [], items: [], jobs: [], expenses: [], period: S.period, example: false }; persist(); toast('Everything cleared'); });
+  if (act === 'clear-all') return armDelete(t, () => { S = { settings: S.settings, vehicles: [], items: [], jobs: [], expenses: [], insights: {}, period: S.period, example: false }; persist(); toast('Everything cleared'); });
   if (act === 'load-example') return armDelete(t, () => { const keep = S.period; S = seed(); S.period = keep; persist(); toast('Example data loaded'); });
   if (act === 'exp-json') return sendFile('asset-ledger-backup-' + todayISO() + '.json', JSON.stringify(S, null, 2));
   if (act === 'exp-vehicles') {
@@ -1000,6 +1160,9 @@ document.addEventListener('click', ev => {
     return sendFile('cost-report-' + S.period.from + '-to-' + S.period.to + '.csv', toCsv(rows));
   }
   if (act === 'imp') return importForm();
+  if (act === 'run-insights') return runInsights(id);
+  if (act === 'stop-insights') { if (insightCtl) insightCtl.abort(); return; }
+  if (act === 'copy-prompt') { const v = vget(id); return copyText('Research prompt', insightPrompt(carFacts(v), true)); }
 });
 
 document.addEventListener('change', ev => {
@@ -1018,6 +1181,9 @@ document.addEventListener('input', ev => {
   if (id === 'vehQ') { vehQ = ev.target.value; const pos = ev.target.selectionStart; render(); const q = $('#vehQ'); q.focus(); q.setSelectionRange(pos, pos); }
   if (id === 'sCur') { S.settings.currency = ev.target.value.trim().toUpperCase() || 'KES'; save(); }
   if (id === 'sOh') { S.settings.overheadPct = Math.max(0, parseFloat(ev.target.value) || 0); save(); }
+  if (id === 'sReg') { S.settings.region = ev.target.value.trim(); save(); }
+  if (id === 'sAgUrl') { AG.url = ev.target.value.trim(); saveAG(); }
+  if (id === 'sAgTok') { AG.token = ev.target.value; saveAG(); }
   if (id === 'sLab') { S.settings.labourRate = Math.max(0, parseFloat(ev.target.value) || 0); save(); }
   if (id === 'xLit' || id === 'xAmt') { const l = numv('xLit'), a = numv('xAmt'); const p = $('#xPpl'); if (p) p.textContent = l > 0 && a > 0 ? nf2.format(a / l) + ' per litre' : ''; }
 });
@@ -1036,12 +1202,14 @@ window.addEventListener('hashchange', () => { const h = location.hash.slice(1); 
 (function boot() {
   const saved = load();
   S = saved || seed();
-  S.settings = Object.assign({ currency: 'KES', overheadPct: 10, labourRate: 2500 }, S.settings);
+  S.settings = Object.assign({ currency: 'KES', overheadPct: 10, labourRate: 2500, region: 'Kenya' }, S.settings);
   if (!Array.isArray(S.expenses)) S.expenses = [];
+  if (!S.insights || typeof S.insights !== 'object') S.insights = {};
   if (!S.period || !S.period.preset) S.period = { preset: 'ytd', from: '', to: '' };
   if (S.period.preset !== 'custom' || !S.period.from) applyPreset(S.period.preset === 'custom' ? 'ytd' : S.period.preset);
   const h = (location.hash || '').slice(1); if (TABS.some(t => t[0] === h)) tab = h;
   renderPeriod(); render();
+  getSample().then(x => { hasSample = !!x; if (tab === 'life') render(); });
 })();
 </script>
 
