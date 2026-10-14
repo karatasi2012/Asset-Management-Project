@@ -1,0 +1,1049 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Asset Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@85..100,500..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: sticky header with period controls, tab strip, one working surface of tables and compact charts. */
+:root{
+  --bg:#edf1ef; --surface:#ffffff; --surface2:#f5f8f6; --ink:#15221e; --muted:#5a6b65; --line:#d4ddd9;
+  --accent:#0f6e5e; --accent-ink:#ffffff;
+  --cap:#4a5e8c; --direct:#0f7a68; --indirect:#c2851a;
+  --ok:#1b7f4b; --warn:#a85a07; --bad:#b3261e; --warn-bg:#fbf0dc; --bad-bg:#fbe7e5; --ok-bg:#e1f3ea;
+  --f-display:'Archivo','Arial Narrow',Arial,sans-serif;
+  --f-body:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1513; --surface:#151e1b; --surface2:#1a2521; --ink:#e4ece8; --muted:#8fa19a; --line:#26342f;
+  --accent:#3fbfa5; --accent-ink:#07201a;
+  --cap:#8fa6d8; --direct:#3fbfa5; --indirect:#e0a63a;
+  --ok:#5ccb8f; --warn:#e0a63a; --bad:#f0867d; --warn-bg:#2e2410; --bad-bg:#331a18; --ok-bg:#15291f;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1513; --surface:#151e1b; --surface2:#1a2521; --ink:#e4ece8; --muted:#8fa19a; --line:#26342f;
+  --accent:#3fbfa5; --accent-ink:#07201a;
+  --cap:#8fa6d8; --direct:#3fbfa5; --indirect:#e0a63a;
+  --ok:#5ccb8f; --warn:#e0a63a; --bad:#f0867d; --warn-bg:#2e2410; --bad-bg:#331a18; --ok-bg:#15291f;
+  color-scheme:dark}
+
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.5 var(--f-body);padding-inline:16px;padding-block:0 48px}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+h2{font-size:20px;font-weight:700}
+h3{font-size:15px;font-weight:700}
+p{margin:0}
+.app{max-width:1240px;margin:0 auto}
+.num,.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.small{font-size:12px}
+
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--bg);display:flex;flex-wrap:wrap;gap:12px 24px;align-items:flex-end;justify-content:space-between;padding-block:16px 12px;border-bottom:1px solid var(--line)}
+.brand h1{font-size:26px;font-weight:800;font-stretch:88%}
+.brand .sub{display:block;font-size:12px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.period{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end}
+.period label{display:flex;flex-direction:column;gap:2px;font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.period input,.period select{min-width:0}
+
+.tabs{display:flex;gap:4px;overflow-x:auto;padding-block:12px;scrollbar-width:thin}
+.tabs button{flex:none;background:transparent;border:1px solid transparent;color:var(--muted);font:600 14px var(--f-body);padding:7px 14px;border-radius:6px;cursor:pointer}
+.tabs button:hover{color:var(--ink)}
+.tabs button[aria-current="page"]{background:var(--ink);color:var(--bg)}
+
+input,select,textarea{font:14px var(--f-body);color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:7px 9px;width:100%}
+textarea{resize:vertical;min-height:70px}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.btn{font:600 13px var(--f-body);border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:6px;padding:7px 12px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.danger{color:var(--bad)}
+.btn.sm{padding:3px 8px;font-size:12px}
+.btn.confirm{background:var(--bad);border-color:var(--bad);color:#fff}
+
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin-block:4px 14px}
+.bar .grow{flex:1 1 220px;min-width:0}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;min-width:0}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr))}
+.kpis{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin-bottom:16px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;min-width:0}
+.kpi .l{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.kpi .v{font:600 22px var(--f-mono);font-variant-numeric:tabular-nums;margin-top:2px;overflow-wrap:anywhere}
+.kpi .s{font-size:12px;color:var(--muted)}
+.kpi.cap{border-top:3px solid var(--cap)} .kpi.dir{border-top:3px solid var(--direct)} .kpi.ind{border-top:3px solid var(--indirect)}
+.banner{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;justify-content:space-between;background:var(--warn-bg);color:var(--warn);border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:13px}
+
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+th{font:600 11px var(--f-body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);background:var(--surface2);white-space:nowrap}
+td.num,th.num{text-align:right;white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+tfoot td{font-weight:600;background:var(--surface2);border-top:2px solid var(--line);border-bottom:0}
+tr.grp th{text-align:center;border-bottom:1px solid var(--line)}
+th.cd{color:var(--direct)} th.ci{color:var(--indirect)} th.cc{color:var(--cap)}
+td.act{white-space:nowrap;text-align:right}
+td.act .btn+.btn{margin-left:4px}
+.empty{padding:28px 16px;text-align:center;color:var(--muted);display:flex;flex-direction:column;gap:12px;align-items:center}
+
+.chip{display:inline-block;font-size:11px;font-weight:600;padding:1px 8px;border-radius:99px;background:var(--surface2);border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.chip.ok{background:var(--ok-bg);color:var(--ok);border-color:transparent}
+.chip.warn{background:var(--warn-bg);color:var(--warn);border-color:transparent}
+.chip.bad{background:var(--bad-bg);color:var(--bad);border-color:transparent}
+
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--muted);margin-bottom:10px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.cap-bg{background:var(--cap)} .dir-bg{background:var(--direct)} .ind-bg{background:var(--indirect)}
+.cols{display:flex;align-items:flex-end;gap:6px;height:170px;overflow-x:auto;padding-bottom:2px}
+.col{flex:1 0 30px;max-width:64px;height:100%;display:flex;flex-direction:column;justify-content:flex-end;align-items:stretch}
+.col .stack{display:flex;flex-direction:column-reverse;flex:none;height:calc(100% - 18px);justify-content:flex-start}
+.col .lab{font-size:10px;color:var(--muted);text-align:center;margin-top:4px;white-space:nowrap}
+.hb{display:grid;grid-template-columns:minmax(90px,180px) 1fr auto;gap:10px;align-items:center;margin-block:7px;font-size:13px}
+.hb .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hb .trk{display:flex;height:14px;background:var(--surface2);border-radius:3px;overflow:hidden}
+.hb .trk div{height:100%}
+.list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.list .it{display:flex;gap:10px;justify-content:space-between;align-items:baseline;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.list .it:last-child{border:0;padding:0}
+dl.def{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:10px 0 0;font-size:13px}
+dl.def dt{font-weight:600} dl.def dd{margin:0;color:var(--muted)}
+.formula{font-family:var(--f-mono);font-size:13px;background:var(--surface2);border:1px solid var(--line);border-radius:6px;padding:8px 10px;margin-top:8px;overflow-x:auto}
+
+.ov{position:fixed;inset:0;background:rgba(8,14,12,.55);z-index:50;display:flex;align-items:flex-start;justify-content:center;padding:max(16px,env(safe-area-inset-top,0px)) 12px 16px;overflow-y:auto}
+.modal{background:var(--surface);border:1px solid var(--line);border-radius:12px;width:min(720px,100%);padding:18px;margin-block:auto}
+.modal header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.fg{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,200px),1fr))}
+.f{display:flex;flex-direction:column;gap:3px;min-width:0}
+.f>span{font-size:11px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.f.wide{grid-column:1/-1}
+.f small{color:var(--muted);font-size:12px}
+.sec{grid-column:1/-1;font:700 12px var(--f-display);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border-top:1px solid var(--line);padding-top:10px;margin-top:4px}
+.lines{display:flex;flex-direction:column;gap:8px}
+.ln{display:grid;grid-template-columns:1fr 90px auto;gap:8px;align-items:center}
+.merr{color:var(--bad);font-size:13px;min-height:20px;margin-top:10px}
+.mfoot{display:flex;gap:8px;justify-content:flex-end;margin-top:8px;flex-wrap:wrap}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:8px;font-size:13px;z-index:60;max-width:calc(100% - 32px)}
+#toast[hidden]{display:none}
+@media (max-width:560px){.brand h1{font-size:22px}.hb{grid-template-columns:90px 1fr auto}}
+@media (prefers-reduced-motion:no-preference){.btn{transition:border-color .12s}}
+</style>
+
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand"><h1>Asset Ledger</h1><span class="sub">Company vehicles · the cost of a car over its life</span></div>
+    <div class="period" role="group" aria-label="Reporting period">
+      <label>Period<select id="preset"></select></label>
+      <label>From<input type="date" id="pFrom"></label>
+      <label>To<input type="date" id="pTo"></label>
+    </div>
+  </header>
+  <nav class="tabs" id="nav" aria-label="Sections"></nav>
+  <div id="banner"></div>
+  <main id="main"></main>
+</div>
+<div id="modalRoot"></div>
+<div id="toast" hidden></div>
+
+<script>
+/*CALC-START*/
+const DAY = 864e5;
+const D = s => { if (!s) return NaN; const p = String(s).split('-').map(Number); return Date.UTC(p[0], p[1] - 1, p[2]); };
+const iso = ms => new Date(ms).toISOString().slice(0, 10);
+
+/* Expense categories: [key, label, cost bucket, class]. Class is where the cost sits in direct / indirect / ownership. */
+const CATS = [
+  ['fuel', 'Fuel', 'fuel', 'direct'],
+  ['tolls', 'Tolls & parking', 'otherDirect', 'direct'],
+  ['cleaning', 'Washing & cleaning', 'otherDirect', 'direct'],
+  ['repairs', 'Repairs bought outside', 'otherDirect', 'direct'],
+  ['accident', 'Accident costs not insured', 'otherDirect', 'direct'],
+  ['insurance', 'Insurance', 'insurance', 'indirect'],
+  ['licence', 'Licence & inspection', 'licence', 'indirect'],
+  ['driver', 'Driver wages & allowances', 'driver', 'indirect'],
+  ['tracker', 'Tracker & subscriptions', 'otherInd', 'indirect'],
+  ['fines', 'Fines & penalties', 'otherInd', 'indirect'],
+  ['interest', 'Loan interest', 'fin', 'ownership'],
+  ['other', 'Other', 'otherInd', 'indirect']
+];
+const CAT = {}; CATS.forEach(c => CAT[c[0]] = { label: c[1], bucket: c[2], cls: c[3] });
+const BK = [
+  ['dep', 'Depreciation', 'own'], ['lease', 'Lease payments', 'own'], ['fin', 'Loan interest and loss on sale', 'own'],
+  ['fuel', 'Fuel', 'dir'], ['labour', 'Servicing labour', 'dir'], ['contractor', 'Garage and contractor invoices', 'dir'], ['spares', 'Spare parts and tyres', 'dir'], ['cons', 'Consumables (oil, filters, fluids)', 'dir'], ['otherDirect', 'Tolls, parking, cleaning, other repairs', 'dir'],
+  ['insurance', 'Insurance', 'ind'], ['licence', 'Licence and inspection', 'ind'], ['driver', 'Driver wages', 'ind'], ['otherInd', 'Tracker, fines, other', 'ind'], ['overhead', 'Workshop overhead', 'ind'], ['downtime', 'Downtime', 'ind']
+];
+const KEYS = ['dep', 'lease', 'fin', 'fuel', 'labour', 'contractor', 'spares', 'cons', 'otherDirect', 'insurance', 'licence', 'driver', 'otherInd', 'overhead', 'downtime', 'own', 'direct', 'indirect', 'total', 'km', 'fuelL', 'jobs', 'downDays'];
+
+let S = { settings: { currency: 'KES', overheadPct: 10, labourRate: 2500 }, vehicles: [], items: [], jobs: [], expenses: [], period: { preset: 'ytd', from: '', to: '' }, example: false };
+
+function holdEnd(v) { return v.disposed ? D(v.disposed) + DAY : Infinity; }
+
+/* Net book value at instant t. Reducing balance: NBV = cost x (1 - rate)^(years held), never below salvage. */
+function nbvAt(v, t) {
+  if (v.ownership === 'leased') return 0;
+  const acq = D(v.acquired);
+  const end = Math.min(t, holdEnd(v));
+  const yrs = Math.max(0, (end - acq) / (365 * DAY));
+  const val = v.cost * Math.pow(1 - (v.rate || 0) / 100, yrs);
+  return Math.max(Math.min(v.salvage || 0, v.cost), val);
+}
+
+/* Movement for [from, toEx): opening + additions - depreciation - disposals = closing. */
+function depSched(v, from, toEx) {
+  const r = { open: 0, add: 0, dep: 0, disp: 0, close: 0, active: false, disposedIn: false };
+  if (v.ownership === 'leased' || !(v.cost > 0)) return r;
+  const acq = D(v.acquired), he = holdEnd(v);
+  if (acq >= toEx || he <= from) return r;
+  const s = Math.max(from, acq), e = Math.min(toEx, he);
+  r.active = true;
+  const added = acq >= from;
+  r.add = added ? v.cost : 0;
+  r.open = added ? 0 : nbvAt(v, s);
+  const atStart = added ? v.cost : r.open;
+  const atEnd = nbvAt(v, e);
+  r.dep = atStart - atEnd;
+  r.disposedIn = he <= toEx;
+  r.disp = r.disposedIn ? atEnd : 0;
+  r.close = r.disposedIn ? 0 : atEnd;
+  return r;
+}
+
+function heldDays(v, from, toEx, extraEnd) {
+  const s = Math.max(from, D(v.acquired));
+  const e = Math.min(toEx, holdEnd(v), extraEnd === undefined ? Infinity : extraEnd);
+  return Math.max(0, (e - s) / DAY);
+}
+function overlapDays(a0, a1, b0, b1) { return Math.max(0, Math.min(a1, b1) - Math.max(a0, b0)) / DAY; }
+
+/* An expense counts on its date, or is spread evenly over the days it covers (insurance, licence, subscriptions). */
+function expAlloc(e, from, toEx) {
+  if (e.coverFrom && e.coverTo) {
+    const c0 = D(e.coverFrom), c1 = D(e.coverTo) + DAY, days = (c1 - c0) / DAY;
+    if (days > 0) return e.amount * overlapDays(c0, c1, from, toEx) / days;
+  }
+  const t = D(e.date);
+  return t >= from && t < toEx ? e.amount : 0;
+}
+
+/* Odometer readings come from the starting km, every job and expense that records km, and the km at sale. */
+function readings(v) {
+  const r = [];
+  if (v.acquired) r.push([D(v.acquired), v.odoStart || 0]);
+  S.jobs.forEach(j => { if (j.vehicleId === v.id && j.odometer > 0) r.push([D(j.date), j.odometer]); });
+  S.expenses.forEach(e => { if (e.vehicleId === v.id && e.odometer > 0) r.push([D(e.date), e.odometer]); });
+  if (v.disposed && v.disposalOdo > 0) r.push([D(v.disposed), v.disposalOdo]);
+  return r.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+}
+function odoAt(r, t) {
+  if (!r.length) return null;
+  if (t <= r[0][0]) return r[0][1];
+  const L = r[r.length - 1];
+  if (t >= L[0]) return L[1];
+  for (let i = 1; i < r.length; i++) {
+    if (t <= r[i][0]) { const a = r[i - 1], b = r[i]; return b[0] === a[0] ? b[1] : a[1] + (b[1] - a[1]) * (t - a[0]) / (b[0] - a[0]); }
+  }
+  return L[1];
+}
+
+/* Every cost of keeping one car in [from, toEx): ownership, direct and indirect. */
+function costFor(v, from, toEx) {
+  const c = {}; KEYS.forEach(k => c[k] = 0);
+  c.kmpl = null;
+  const ds = depSched(v, from, toEx);
+  c.dep = ds.dep;
+  if (ds.disposedIn) c.fin += ds.disp - (v.proceeds || 0);
+  if (v.ownership === 'leased') {
+    const endx = v.leaseEnd ? D(v.leaseEnd) + DAY : Infinity;
+    c.lease = (v.leaseMonthly || 0) * 12 / 365 * heldDays(v, from, toEx, endx);
+  }
+  const fuels = [];
+  for (const e of S.expenses) {
+    if (e.vehicleId !== v.id) continue;
+    const cat = CAT[e.category] || CAT.other;
+    c[cat.bucket] += expAlloc(e, from, toEx);
+    const t = D(e.date);
+    if (e.category === 'fuel' && t >= from && t < toEx) {
+      c.fuelL += e.litres || 0;
+      if (e.litres > 0 && e.odometer > 0) fuels.push(e);
+    }
+  }
+  if (fuels.length >= 2) {
+    fuels.sort((a, b) => a.odometer - b.odometer);
+    const km = fuels[fuels.length - 1].odometer - fuels[0].odometer;
+    const lit = fuels.slice(1).reduce((s, e) => s + e.litres, 0);
+    if (km > 0 && lit > 0) c.kmpl = km / lit;
+  }
+  for (const j of S.jobs) {
+    if (j.vehicleId !== v.id) continue;
+    const t = D(j.date);
+    if (t < from || t >= toEx) continue;
+    c.jobs++;
+    c.labour += (j.labourHours || 0) * (j.labourRate || 0);
+    c.contractor += j.contractor || 0;
+    c.downDays += j.downtimeDays || 0;
+    for (const l of (j.lines || [])) {
+      const val = (l.qty || 0) * (l.unitCost || 0);
+      if (l.kind === 'consumable') c.cons += val; else c.spares += val;
+    }
+  }
+  c.downtime = c.downDays * (v.downtimePerDay || 0);
+  c.overhead = (c.labour + c.contractor + c.spares + c.cons) * (S.settings.overheadPct || 0) / 100;
+  c.own = c.dep + c.lease + c.fin;
+  c.direct = c.fuel + c.labour + c.contractor + c.spares + c.cons + c.otherDirect;
+  c.indirect = c.insurance + c.licence + c.driver + c.otherInd + c.overhead + c.downtime;
+  c.total = c.own + c.direct + c.indirect;
+  const s = Math.max(from, D(v.acquired)), e = Math.min(toEx, holdEnd(v));
+  if (e > s) { const r = readings(v); c.km = Math.max(0, odoAt(r, e) - odoAt(r, s)); }
+  return c;
+}
+/*CALC-END*/
+
+/* ---------- state, storage ---------- */
+const KEY = 'assetLedger.fleet.v1';
+const uid = () => Math.random().toString(36).slice(2, 9);
+const $ = (s, r) => (r || document).querySelector(s);
+const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+const todayISO = () => { const n = new Date(); return n.getFullYear() + '-' + String(n.getMonth() + 1).padStart(2, '0') + '-' + String(n.getDate()).padStart(2, '0'); };
+const nf = new Intl.NumberFormat('en-KE', { maximumFractionDigits: 0 });
+const nf1 = new Intl.NumberFormat('en-KE', { maximumFractionDigits: 1 });
+const nf2 = new Intl.NumberFormat('en-KE', { maximumFractionDigits: 2 });
+const m0 = n => (Math.abs(n) < 0.5 ? '–' : nf.format(Math.round(n)));
+const mm = n => nf.format(Math.round(n));
+const perKm = (a, km) => (km > 0 ? nf2.format(a / km) : '–');
+
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { /* storage unavailable */ } }
+function load() {
+  try { const raw = localStorage.getItem(KEY); if (raw) { const o = JSON.parse(raw); if (o && Array.isArray(o.vehicles)) return o; } } catch (e) { }
+  return null;
+}
+
+function seed() {
+  const today = D(todayISO());
+  const rs = { v: 20261014 };
+  const rnd = () => { rs.v = (rs.v * 1664525 + 1013904223) % 4294967296; return rs.v / 4294967296; };
+  const items = [
+    { id: 'i1', sku: 'CN-001', name: 'Engine oil 5W-30', kind: 'consumable', unit: 'L', unitCost: 1350, stock: 120, reorder: 40 },
+    { id: 'i2', sku: 'CN-002', name: 'Oil filter', kind: 'consumable', unit: 'pc', unitCost: 1100, stock: 18, reorder: 8 },
+    { id: 'i3', sku: 'CN-003', name: 'Air filter', kind: 'consumable', unit: 'pc', unitCost: 1900, stock: 6, reorder: 6 },
+    { id: 'i4', sku: 'CN-004', name: 'Coolant', kind: 'consumable', unit: 'L', unitCost: 700, stock: 30, reorder: 10 },
+    { id: 'i5', sku: 'SP-001', name: 'Brake pad set', kind: 'spare', unit: 'set', unitCost: 6800, stock: 5, reorder: 2 },
+    { id: 'i6', sku: 'SP-002', name: 'Tyre 265/65R17', kind: 'spare', unit: 'pc', unitCost: 21500, stock: 8, reorder: 4 },
+    { id: 'i7', sku: 'SP-003', name: 'Battery 70Ah', kind: 'spare', unit: 'pc', unitCost: 14500, stock: 2, reorder: 2 },
+    { id: 'i8', sku: 'SP-004', name: 'Wiper blade pair', kind: 'spare', unit: 'pair', unitCost: 1800, stock: 12, reorder: 4 }
+  ];
+  const it = k => items.find(i => i.sku === k);
+  const L = (sku, q) => { const i = it(sku); return { itemId: i.id, qty: q, unitCost: i.unitCost, kind: i.kind }; };
+  const nx = new Date(today + 17 * DAY);
+  const prado = (nx.getUTCFullYear() - 2) + '-' + String(nx.getUTCMonth() + 1).padStart(2, '0') + '-' + String(nx.getUTCDate()).padStart(2, '0');
+  const y = new Date(today).getUTCFullYear();
+  const mk = (o) => Object.assign({ id: uid(), vin: '', salvage: 0, rate: 25, odoStart: 0, leaseMonthly: 0, leaseEnd: '', downtimePerDay: 0, serviceIntervalKm: 10000, disposed: '', disposalOdo: 0, proceeds: 0, notes: '' }, o);
+  const gen = [
+    [mk({ reg: 'KDG 214X', make: 'Toyota', model: 'Hilux Double Cab', year: 2023, dept: 'Operations', driver: 'J. Otieno', fuel: 'Diesel', ownership: 'owned', acquired: (y - 3) + '-02-10', cost: 6800000, salvage: 1500000, downtimePerDay: 8000 }), { km: 2800, kmpl: 9.5, price: 192, tolls: 2500, driver: 0, insure: 6800000 * 0.04 }],
+    [mk({ reg: 'KDM 560P', make: 'Toyota', model: 'Land Cruiser Prado', year: 2024, dept: 'Executive', driver: 'M. Wanjiru (chauffeur)', fuel: 'Diesel', ownership: 'owned', acquired: prado, cost: 11500000, salvage: 3000000, downtimePerDay: 15000, odoStart: 4000 }), { km: 1800, kmpl: 7.8, price: 192, tolls: 4500, driver: 52000, insure: 11500000 * 0.045 }],
+    [mk({ reg: 'KDD 105T', make: 'Toyota', model: 'Probox', year: 2022, dept: 'Sales', driver: 'Pool car', fuel: 'Petrol', ownership: 'owned', acquired: (y - 4) + '-09-15', cost: 1650000, salvage: 350000, downtimePerDay: 3000, odoStart: 35000, serviceIntervalKm: 5000 }), { km: 3200, kmpl: 12, price: 206, tolls: 1800, driver: 0, insure: 1650000 * 0.05 }],
+    [mk({ reg: 'KDV 332H', make: 'Isuzu', model: 'D-Max', year: 2025, dept: 'Projects', driver: 'P. Kamau', fuel: 'Diesel', ownership: 'leased', acquired: (y - 1) + '-10-01', leaseMonthly: 165000, leaseEnd: (y + 2) + '-09-30', rate: 0, downtimePerDay: 7000, notes: 'Lessor: Kenya Fleet Leasing' }), { km: 3500, kmpl: 9, price: 192, tolls: 3000, driver: 0, insure: 4800000 * 0.04 }],
+    [mk({ reg: 'KCP 031B', make: 'Toyota', model: 'Fielder', year: 2018, dept: 'Admin', driver: 'Pool car', fuel: 'Petrol', ownership: 'owned', acquired: (y - 6) + '-03-01', cost: 1900000, salvage: 250000, downtimePerDay: 2500, disposed: (y - 1) + '-11-30', disposalOdo: 0, proceeds: 520000, odoStart: 22000, serviceIntervalKm: 5000 }), { km: 2200, kmpl: 13, price: 206, tolls: 1200, driver: 0, insure: 1900000 * 0.045 }]
+  ];
+  const jobs = [], expenses = [];
+  const E = (v, date, category, amount, extra) => expenses.push(Object.assign({ id: uid(), vehicleId: v.id, date, category, amount: Math.round(amount), odometer: 0, litres: 0, vendor: '', coverFrom: '', coverTo: '', notes: '' }, extra || {}));
+  gen.forEach(([v, g]) => {
+    const start = D(v.acquired), end = v.disposed ? D(v.disposed) : today;
+    let odo = v.odoStart, dist = 0, nextSvc = v.serviceIntervalKm, nextTyre = 40000, nextBrake = 55000, nextBat = 70000, k = 0;
+    for (let t = start + 3 * DAY; t <= end; t += 15 * DAY) {
+      const km = g.km / 2 * (0.85 + 0.3 * rnd());
+      odo += km; dist += km;
+      const lit = km / g.kmpl * (0.93 + 0.14 * rnd());
+      E(v, iso(t), 'fuel', lit * g.price * (0.98 + 0.04 * rnd()), { odometer: Math.round(odo), litres: Math.round(lit * 10) / 10, vendor: 'Fuel station' });
+      const jd = iso(Math.min(t + DAY, end));
+      if (dist >= nextSvc) {
+        nextSvc += v.serviceIntervalKm;
+        jobs.push({ id: uid(), date: jd, vehicleId: v.id, type: 'Service', description: Math.round(dist / 100) * 100 + ' km service', odometer: Math.round(odo), labourHours: 3, labourRate: 2500, downtimeDays: 1, contractor: 0, lines: [L('CN-001', 7), L('CN-002', 1), ...(Math.round(dist / v.serviceIntervalKm) % 2 === 0 ? [L('CN-003', 1)] : [])] });
+      }
+      if (v.ownership === 'owned' && dist >= nextTyre) { nextTyre += 40000; jobs.push({ id: uid(), date: jd, vehicleId: v.id, type: 'Tyres & battery', description: 'Four new tyres, alignment', odometer: Math.round(odo), labourHours: 2, labourRate: 2500, downtimeDays: 0.5, contractor: 6000, lines: [L('SP-002', 4)] }); }
+      if (v.ownership === 'owned' && dist >= nextBrake) { nextBrake += 55000; jobs.push({ id: uid(), date: jd, vehicleId: v.id, type: 'Repair', description: 'Front brake pads and disc skim', odometer: Math.round(odo), labourHours: 3, labourRate: 2500, downtimeDays: 2, contractor: 4500, lines: [L('SP-001', 1)] }); }
+      if (v.ownership === 'owned' && dist >= nextBat) { nextBat += 70000; jobs.push({ id: uid(), date: jd, vehicleId: v.id, type: 'Tyres & battery', description: 'Battery replaced', odometer: Math.round(odo), labourHours: 0.5, labourRate: 2500, downtimeDays: 0, contractor: 0, lines: [L('SP-003', 1)] }); }
+      if (k % 2 === 0) E(v, iso(t), 'tolls', g.tolls * (0.6 + 0.8 * rnd()), { vendor: 'Expressway and parking' });
+      k++;
+    }
+    for (let m = 0; start + m * 30 * DAY <= end; m++) { if (g.driver) E(v, iso(start + m * 30 * DAY + 27 * DAY > end ? end : start + m * 30 * DAY + 27 * DAY), 'driver', g.driver, { notes: 'Monthly wages' }); }
+    const sd = new Date(start);
+    for (let a = 0; ; a++) {
+      const s0 = Date.UTC(sd.getUTCFullYear() + a, sd.getUTCMonth(), sd.getUTCDate());
+      if (s0 > end) break;
+      const nom = Date.UTC(sd.getUTCFullYear() + a + 1, sd.getUTCMonth(), sd.getUTCDate()) - DAY;
+      const ce = v.disposed ? Math.min(nom, end) : nom, frac = (ce - s0 + DAY) / (nom - s0 + DAY);
+      E(v, iso(s0), 'insurance', g.insure * frac, { vendor: 'Motor insurer', coverFrom: iso(s0), coverTo: iso(ce), notes: 'Comprehensive' });
+      E(v, iso(s0), 'tracker', 14000 * frac, { vendor: 'Tracking provider', coverFrom: iso(s0), coverTo: iso(ce) });
+      const l0 = s0 + 30 * DAY;
+      if (l0 <= end) { const lnom = Date.UTC(sd.getUTCFullYear() + a + 1, sd.getUTCMonth(), sd.getUTCDate()) + 29 * DAY, lce = v.disposed ? Math.min(lnom, end) : lnom; E(v, iso(l0), 'licence', 9500 * ((lce - l0 + DAY) / (365 * DAY)), { vendor: 'Inspection and licence', coverFrom: iso(l0), coverTo: iso(lce) }); }
+    }
+    jobs.filter(j => j.vehicleId === v.id).forEach(() => { });
+    if (v.disposed) v.disposalOdo = Math.round(odo);
+  });
+  const fielder = gen[4][0], dmax = gen[3][0], probox = gen[2][0];
+  jobs.push({ id: uid(), date: (y - 2) + '-08-12', vehicleId: fielder.id, type: 'Accident repair', description: 'Rear bumper and boot panel after collision', odometer: 0, labourHours: 0, labourRate: 0, downtimeDays: 12, contractor: 185000, lines: [] });
+  expenses.push({ id: uid(), vehicleId: probox.id, date: (y - 1) + '-05-20', category: 'repairs', amount: 78000, odometer: 0, litres: 0, vendor: 'Mombasa Road Auto', coverFrom: '', coverTo: '', notes: 'Clutch kit and fitting' });
+  expenses.push({ id: uid(), vehicleId: probox.id, date: (y - 1) + '-02-11', category: 'fines', amount: 10000, odometer: 0, litres: 0, vendor: '', coverFrom: '', coverTo: '', notes: 'Traffic fine' });
+  expenses.push({ id: uid(), vehicleId: dmax.id, date: y + '-03-04', category: 'cleaning', amount: 8500, odometer: 0, litres: 0, vendor: 'Car wash', coverFrom: '', coverTo: '', notes: 'Deep clean after site work' });
+  const vehicles = gen.map(g => g[0]);
+  return { settings: { currency: 'KES', overheadPct: 10, labourRate: 2500 }, vehicles, items, jobs, expenses, period: { preset: 'ytd', from: '', to: '' }, example: true };
+}
+
+/* ---------- period ---------- */
+const PRESETS = [['ytd', 'Year to date'], ['year', 'This year (full)'], ['last', 'Last year'], ['qtr', 'This quarter'], ['l12', 'Last 12 months'], ['custom', 'Custom']];
+function applyPreset(p) {
+  const t = todayISO(), y = +t.slice(0, 4), m = +t.slice(5, 7);
+  if (p === 'ytd') { S.period.from = y + '-01-01'; S.period.to = t; }
+  else if (p === 'year') { S.period.from = y + '-01-01'; S.period.to = y + '-12-31'; }
+  else if (p === 'last') { S.period.from = (y - 1) + '-01-01'; S.period.to = (y - 1) + '-12-31'; }
+  else if (p === 'qtr') { const q = Math.floor((m - 1) / 3) * 3; S.period.from = iso(Date.UTC(y, q, 1)); S.period.to = iso(Date.UTC(y, q + 3, 0)); }
+  else if (p === 'l12') { S.period.from = iso(D(t) - 364 * DAY); S.period.to = t; }
+  S.period.preset = p;
+}
+const PF = () => D(S.period.from);
+const PT = () => D(S.period.to) + DAY;
+const cur = () => S.settings.currency || 'KES';
+
+/* ---------- derived ---------- */
+function status(v) {
+  const now = D(todayISO()) + DAY;
+  if (v.disposed && D(v.disposed) + DAY <= now) return v.ownership === 'leased' ? 'Returned' : 'Sold';
+  if (D(v.acquired) >= now) return 'Pending';
+  return v.ownership === 'leased' ? 'Leased' : 'In service';
+}
+const isLive = v => { const s = status(v); return s === 'In service' || s === 'Leased'; };
+const chipFor = s => ({ 'In service': 'ok', 'Leased': 'ok', 'Pending': 'warn' }[s] || '');
+const vget = id => S.vehicles.find(x => x.id === id);
+const vname = id => { const v = vget(id); return v ? v.reg : '(deleted)'; };
+const vfull = v => v.reg + ' · ' + [v.make, v.model].filter(Boolean).join(' ');
+const latestOdo = v => { const r = readings(v); return r.length ? r[r.length - 1][1] : 0; };
+function lastServiceOdo(v) { let m = v.odoStart || 0; S.jobs.forEach(j => { if (j.vehicleId === v.id && j.type === 'Service' && j.odometer > m) m = j.odometer; }); return m; }
+function coverEnd(v, cat) { let m = 0; S.expenses.forEach(e => { if (e.vehicleId === v.id && e.category === cat && e.coverTo) m = Math.max(m, D(e.coverTo)); }); return m || null; }
+
+function portfolio(from, toEx) {
+  const rows = S.vehicles.map(v => ({ v, c: costFor(v, from, toEx), d: depSched(v, from, toEx) }));
+  const T = {}; KEYS.forEach(k => T[k] = rows.reduce((s, r) => s + r.c[k], 0));
+  return { rows, T };
+}
+
+function alerts() {
+  const out = [], now = D(todayISO());
+  S.vehicles.filter(isLive).forEach(v => {
+    [['insurance', 'Insurance'], ['licence', 'Licence and inspection']].forEach(a => {
+      const e = coverEnd(v, a[0]);
+      if (e === null) { out.push({ sev: 1, v, text: a[1] + ': no cover recorded', chip: 'check', cls: 'warn' }); return; }
+      const days = Math.round((e - now) / DAY);
+      if (days < 0) out.push({ sev: 3, v, text: a[1] + ' expired', chip: (-days) + ' days ago', cls: 'bad' });
+      else if (days <= 30) out.push({ sev: 2, v, text: a[1] + ' ends ' + iso(e), chip: 'in ' + days + ' days', cls: 'warn' });
+    });
+    if (v.serviceIntervalKm > 0) {
+      const rem = lastServiceOdo(v) + v.serviceIntervalKm - latestOdo(v);
+      if (rem <= 1000) out.push({ sev: rem < 0 ? 3 : 2, v, text: 'Service', chip: rem < 0 ? 'overdue by ' + nf.format(-rem) + ' km' : 'due in ' + nf.format(rem) + ' km', cls: rem < 0 ? 'bad' : 'warn' });
+    }
+    if (v.ownership === 'leased' && v.leaseEnd) {
+      const days = Math.round((D(v.leaseEnd) - now) / DAY);
+      if (days >= 0 && days <= 90) out.push({ sev: 2, v, text: 'Lease ends ' + v.leaseEnd, chip: 'in ' + days + ' days', cls: 'warn' });
+    }
+  });
+  S.items.filter(i => i.stock <= i.reorder).forEach(i => out.push({ sev: i.stock <= 0 ? 3 : 1, text: i.name + ' (' + i.sku + ')', chip: nf2.format(i.stock) + ' ' + i.unit + ' left', cls: i.stock <= 0 ? 'bad' : 'warn' }));
+  return out.sort((a, b) => b.sev - a.sev);
+}
+
+/* ---------- scaffolding ---------- */
+const TABS = [['dash', 'Dashboard'], ['vehicles', 'Vehicles'], ['expenses', 'Expenses'], ['maint', 'Servicing & repairs'], ['stock', 'Parts & consumables'], ['dep', 'Depreciation'], ['costs', 'Cost report'], ['life', 'Life of a car'], ['data', 'Data & settings']];
+let tab = 'dash', vehQ = '', vehFilter = 'all', expVeh = '', expCat = '', maintVeh = '', lifeVeh = '', schedVeh = '';
+
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => { t.hidden = true; }, 3200); }
+function renderNav() { $('#nav').innerHTML = TABS.map(t => '<button type="button" data-tab="' + t[0] + '"' + (t[0] === tab ? ' aria-current="page"' : '') + '>' + t[1] + '</button>').join(''); }
+function renderBanner() { $('#banner').innerHTML = S.example ? '<div class="banner"><span>Example vehicles are loaded so you can see how it works. Clear them when you are ready to enter your own cars.</span><button class="btn sm" data-act="clear-all" type="button">Clear examples</button></div>' : ''; }
+function renderPeriod() {
+  $('#preset').innerHTML = PRESETS.map(p => '<option value="' + p[0] + '"' + (p[0] === S.period.preset ? ' selected' : '') + '>' + p[1] + '</option>').join('');
+  $('#pFrom').value = S.period.from; $('#pTo').value = S.period.to;
+}
+function render() {
+  renderNav(); renderBanner();
+  const fn = { dash: vDash, vehicles: vVehicles, expenses: vExpenses, maint: vMaint, stock: vStock, dep: vDep, costs: vCosts, life: vLife, data: vData }[tab];
+  $('#main').innerHTML = fn();
+  const af = $('#vehFilter'); if (af) af.value = vehFilter;
+  try { if (location.hash.slice(1) !== tab) history.replaceState(null, '', '#' + tab); } catch (e) { }
+}
+function persist() { save(); render(); }
+
+const legend = '<div class="legend"><span><i class="cap-bg"></i>Ownership (depreciation, lease, finance)</span><span><i class="dir-bg"></i>Direct (fuel, servicing, parts, tolls)</span><span><i class="ind-bg"></i>Indirect (insurance, licence, driver, overhead, downtime)</span></div>';
+const periodNote = () => '<span class="muted small">' + esc(S.period.from) + ' to ' + esc(S.period.to) + ' · amounts in ' + esc(cur()) + '</span>';
+const emptyVeh = '<div class="panel empty"><span>No vehicles yet. Add your first company car to start tracking its costs.</span><button class="btn primary" data-act="add-vehicle" type="button">Add vehicle</button></div>';
+const clsBg = { own: 'cap-bg', dir: 'dir-bg', ind: 'ind-bg' };
+
+function monthCols(from, toEx, sumFn, maxN) {
+  const months = [];
+  let ms = Date.UTC(new Date(from).getUTCFullYear(), new Date(from).getUTCMonth(), 1);
+  while (ms < toEx) { const d = new Date(ms); const n = Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1); months.push([ms, n]); ms = n; }
+  const used = months.slice(-maxN);
+  const data = used.map(([s, e]) => { const r = sumFn(Math.max(s, from), Math.min(e, toEx)); r.s = s; r.t = r.own + r.dir + r.ind; return r; });
+  return { data, trimmed: months.length > maxN };
+}
+const MN = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function colsHtml(data, labFn, titleFn) {
+  const mx = Math.max(1, ...data.map(d => d.t));
+  const seg = (v, cl) => '<div class="' + cl + '" style="height:' + (v / mx * 100) + '%"></div>';
+  return { mx, html: data.map(d => '<div class="col" title="' + esc(titleFn(d)) + '"><div class="stack">' + seg(d.own, 'cap-bg') + seg(d.dir, 'dir-bg') + seg(d.ind, 'ind-bg') + '</div><div class="lab">' + esc(labFn(d)) + '</div></div>').join('') };
+}
+
+/* ---------- views ---------- */
+function vDash() {
+  const from = PF(), toEx = PT();
+  let h = '<div class="bar"><h2>Fleet overview</h2>' + periodNote() + '</div>';
+  if (!S.vehicles.length) return h + emptyVeh;
+  const P = portfolio(from, toEx), T = P.T;
+  const live = S.vehicles.filter(isLive);
+  const k = (cls, l, v, s) => '<div class="kpi ' + cls + '"><div class="l">' + l + '</div><div class="v">' + v + '</div><div class="s">' + s + '</div></div>';
+  h += '<div class="kpis">' +
+    k('', 'Cars in service', live.length, (S.vehicles.length - live.length) + ' sold, returned or pending') +
+    k('', 'Distance driven', nf.format(T.km) + ' km', nf1.format(T.fuelL) + ' L of fuel bought') +
+    k('cap', 'Ownership', mm(T.own), 'depreciation, lease, finance') +
+    k('dir', 'Direct costs', mm(T.direct), 'fuel, servicing, parts, tolls') +
+    k('ind', 'Indirect costs', mm(T.indirect), 'insurance, driver, overhead') +
+    k('', 'Total cost', mm(T.total), esc(cur()) + ' this period') +
+    k('', 'Cost per km', perKm(T.total, T.km), 'running only: ' + perKm(T.direct + T.indirect, T.km)) + '</div>';
+
+  const mc = monthCols(from, toEx, (a, b) => { let o = 0, d = 0, i = 0; S.vehicles.forEach(v => { const c = costFor(v, a, b); o += c.own; d += c.direct; i += c.indirect; }); return { own: o, dir: d, ind: i }; }, 24);
+  const ch = colsHtml(mc.data, d => { const dt = new Date(d.s); return MN[dt.getUTCMonth()] + (dt.getUTCMonth() === 0 || d === mc.data[0] ? " '" + String(dt.getUTCFullYear()).slice(2) : ''); }, d => { const dt = new Date(d.s); return MN[dt.getUTCMonth()] + ' ' + dt.getUTCFullYear() + ': ownership ' + mm(d.own) + ', direct ' + mm(d.dir) + ', indirect ' + mm(d.ind); });
+  h += '<div class="grid g2"><section class="panel"><h3>Fleet cost by month</h3><p class="muted small" style="margin-bottom:8px">Tallest month: ' + mm(ch.mx) + ' ' + esc(cur()) + (mc.trimmed ? ' · showing the last 24 months' : '') + '</p>' + legend + '<div class="cols">' + ch.html + '</div></section>';
+
+  const al = alerts();
+  h += '<section class="panel"><h3>Needs attention</h3><div class="list">';
+  if (!al.length) h += '<p class="muted">Insurance, licences, services and stock are all in order.</p>';
+  al.slice(0, 10).forEach(a => { h += '<div class="it"><span>' + (a.v ? '<b>' + esc(a.v.reg) + '</b> · ' : '') + esc(a.text) + '</span><span class="chip ' + a.cls + '">' + esc(a.chip) + '</span></div>'; });
+  if (al.length > 10) h += '<p class="muted small">' + (al.length - 10) + ' more not shown</p>';
+  h += '</div></section>';
+
+  const mx2 = Math.max(1, ...BK.map(b => T[b[0]]));
+  h += '<section class="panel"><h3>Where the money goes</h3><p class="muted small">Whole fleet, this period</p>';
+  BK.filter(b => T[b[0]] > 0.5).sort((a, b) => T[b[0]] - T[a[0]]).forEach(b => { h += '<div class="hb"><span class="nm" title="' + esc(b[1]) + '">' + esc(b[1]) + '</span><div class="trk"><div class="' + clsBg[b[2]] + '" style="width:' + (T[b[0]] / mx2 * 100) + '%"></div></div><span class="num">' + mm(T[b[0]]) + '</span></div>'; });
+  h += '</section>';
+
+  const rk = P.rows.filter(r => r.c.km > 0 && r.c.total > 0).sort((a, b) => b.c.total / b.c.km - a.c.total / a.c.km);
+  const mx3 = rk.length ? rk[0].c.total / rk[0].c.km : 1;
+  h += '<section class="panel"><h3>Cost per km by car</h3><p class="muted small">All costs divided by distance driven</p>';
+  if (!rk.length) h += '<p class="muted" style="margin-top:10px">Record odometer readings on fuel entries and jobs to see cost per km.</p>';
+  rk.forEach(r => { const c = r.c, f = 1 / c.km / mx3 * 100; h += '<div class="hb"><span class="nm" title="' + esc(vfull(r.v)) + '">' + esc(r.v.reg) + '</span><div class="trk"><div class="cap-bg" style="width:' + (c.own * f) + '%"></div><div class="dir-bg" style="width:' + (c.direct * f) + '%"></div><div class="ind-bg" style="width:' + (c.indirect * f) + '%"></div></div><span class="num">' + perKm(c.total, c.km) + '</span></div>'; });
+  h += '</section></div>';
+  return h;
+}
+
+function vVehicles() {
+  const q = vehQ.toLowerCase();
+  const rows = S.vehicles.filter(v => {
+    const st = status(v);
+    if (vehFilter === 'owned' && v.ownership !== 'owned') return false;
+    if (vehFilter === 'leased' && v.ownership !== 'leased') return false;
+    if (vehFilter === 'gone' && st !== 'Sold' && st !== 'Returned') return false;
+    if (vehFilter === 'live' && !isLive(v)) return false;
+    return !q || [v.reg, v.make, v.model, v.dept, v.driver, v.vin].join(' ').toLowerCase().includes(q);
+  });
+  const now = D(todayISO()) + DAY;
+  let h = '<div class="bar"><h2>Vehicles</h2><button class="btn primary" data-act="add-vehicle" type="button">Add vehicle</button></div>';
+  h += '<div class="bar"><div class="grow"><input id="vehQ" type="search" placeholder="Search registration, make, department or driver" value="' + esc(vehQ) + '"></div><div><select id="vehFilter" aria-label="Filter"><option value="all">All vehicles</option><option value="live">In service</option><option value="owned">Owned</option><option value="leased">Leased</option><option value="gone">Sold or returned</option></select></div></div>';
+  if (!rows.length) return h + (S.vehicles.length ? '<div class="panel empty">No vehicles match.</div>' : emptyVeh);
+  h += '<div class="tw"><table><thead><tr><th>Registration</th><th>Vehicle</th><th>Department and driver</th><th>Held as</th><th>Acquired</th><th class="num">Odometer</th><th class="num">Cost</th><th class="num">NBV today</th><th>Status</th><th></th></tr></thead><tbody>';
+  rows.forEach(v => {
+    const st = status(v), owned = v.ownership === 'owned';
+    h += '<tr><td class="mono"><b>' + esc(v.reg) + '</b></td><td>' + esc([v.make, v.model, v.year].filter(Boolean).join(' ')) + '<div class="muted small">' + esc(v.fuel || '') + '</div></td><td>' + esc(v.dept) + '<div class="muted small">' + esc(v.driver) + '</div></td><td>' + (owned ? 'Owned' : 'Leased · ' + mm(v.leaseMonthly || 0) + '/mo') + '</td><td class="mono">' + esc(v.acquired) + '</td><td class="num">' + nf.format(latestOdo(v)) + ' km</td><td class="num">' + (owned ? mm(v.cost) : '–') + '</td><td class="num">' + (owned && (st === 'In service') ? mm(nbvAt(v, now)) : '–') + '</td><td><span class="chip ' + chipFor(st) + '">' + st + '</span></td><td class="act"><button class="btn sm" data-act="life" data-id="' + v.id + '" type="button">Life cost</button><button class="btn sm" data-act="edit-vehicle" data-id="' + v.id + '" type="button">Edit</button><button class="btn sm danger" data-act="del-vehicle" data-id="' + v.id + '" type="button">Delete</button></td></tr>';
+  });
+  return h + '</tbody></table></div><p class="muted small" style="margin-top:8px">Amounts in ' + esc(cur()) + '. Insurance and licence reminders come from the cover dates you enter on expenses.</p>';
+}
+
+function vExpenses() {
+  const from = PF(), toEx = PT();
+  let h = '<div class="bar"><h2>Expenses</h2><button class="btn primary" data-act="add-expense" type="button">Add expense</button></div>';
+  if (!S.vehicles.length) return h + emptyVeh;
+  h += '<div class="bar"><div class="grow"><select id="expVeh" aria-label="Vehicle"><option value="">All vehicles</option>' + S.vehicles.map(v => '<option value="' + v.id + '"' + (v.id === expVeh ? ' selected' : '') + '>' + esc(vfull(v)) + '</option>').join('') + '</select></div><div class="grow"><select id="expCat" aria-label="Category"><option value="">All categories</option>' + CATS.map(c => '<option value="' + c[0] + '"' + (c[0] === expCat ? ' selected' : '') + '>' + esc(c[1]) + '</option>').join('') + '</select></div>' + periodNote() + '</div>';
+  const rows = S.expenses.filter(e => { const t = D(e.date); return t >= from && t < toEx && (!expVeh || e.vehicleId === expVeh) && (!expCat || e.category === expCat); }).sort((a, b) => b.date.localeCompare(a.date));
+  if (!rows.length) return h + '<div class="panel empty">No expenses in this period. Add fuel, insurance, licences, tolls and other costs as they happen.</div>';
+  const total = rows.reduce((s, e) => s + e.amount, 0), lit = rows.reduce((s, e) => s + (e.litres || 0), 0);
+  const shown = rows.slice(0, 250);
+  h += '<div class="tw"><table><thead><tr><th>Date</th><th>Vehicle</th><th>Category</th><th>Class</th><th>Details</th><th class="num">Odometer</th><th class="num">Amount</th><th></th></tr></thead><tbody>';
+  shown.forEach(e => {
+    const cat = CAT[e.category] || CAT.other;
+    const det = [e.vendor, e.litres ? nf1.format(e.litres) + ' L at ' + nf1.format(e.amount / e.litres) + '/L' : '', e.coverFrom && e.coverTo ? 'covers ' + e.coverFrom + ' to ' + e.coverTo : '', e.notes].filter(Boolean).join(' · ');
+    h += '<tr><td class="mono">' + esc(e.date) + '</td><td>' + esc(vname(e.vehicleId)) + '</td><td>' + esc(cat.label) + '</td><td><span class="chip">' + cat.cls + '</span></td><td>' + esc(det) + '</td><td class="num">' + (e.odometer ? nf.format(e.odometer) : '–') + '</td><td class="num">' + mm(e.amount) + '</td><td class="act"><button class="btn sm danger" data-act="del-expense" data-id="' + e.id + '" type="button">Delete</button></td></tr>';
+  });
+  h += '</tbody><tfoot><tr><td colspan="6">' + rows.length + ' entries' + (lit ? ' · ' + nf1.format(lit) + ' L of fuel' : '') + '</td><td class="num">' + mm(total) + '</td><td></td></tr></tfoot></table></div>';
+  return h + '<p class="muted small" style="margin-top:8px">' + (rows.length > shown.length ? 'Showing the latest 250 of ' + rows.length + '. ' : '') + 'This list shows entries dated in the period. Reports spread insurance and licence costs over the days they cover, so a yearly premium is shared across the months of cover.</p>';
+}
+
+function jobTotals(j) {
+  let sp = 0, cn = 0;
+  (j.lines || []).forEach(l => { const v = l.qty * l.unitCost; if (l.kind === 'consumable') cn += v; else sp += v; });
+  const lab = (j.labourHours || 0) * (j.labourRate || 0);
+  const v = vget(j.vehicleId);
+  const direct = lab + sp + cn + (j.contractor || 0);
+  const ind = direct * (S.settings.overheadPct || 0) / 100 + (j.downtimeDays || 0) * (v ? v.downtimePerDay || 0 : 0);
+  return { lab, sp, cn, direct, ind };
+}
+
+function vMaint() {
+  const from = PF(), toEx = PT();
+  let h = '<div class="bar"><h2>Servicing and repairs</h2><button class="btn primary" data-act="add-job" type="button">Log a job</button></div>';
+  if (!S.vehicles.length) return h + emptyVeh;
+  h += '<div class="bar"><div class="grow"><select id="maintVeh" aria-label="Vehicle"><option value="">All vehicles</option>' + S.vehicles.map(v => '<option value="' + v.id + '"' + (v.id === maintVeh ? ' selected' : '') + '>' + esc(vfull(v)) + '</option>').join('') + '</select></div>' + periodNote() + '</div>';
+  const jobs = S.jobs.filter(j => { const t = D(j.date); return t >= from && t < toEx && (!maintVeh || j.vehicleId === maintVeh); }).sort((a, b) => b.date.localeCompare(a.date));
+  if (!jobs.length) return h + '<div class="panel empty">No jobs in this period. Log a service, repair or tyre change to record parts, labour and downtime.</div>';
+  const tot = { lab: 0, sp: 0, cn: 0, ct: 0, dd: 0, d: 0, i: 0 };
+  const shown = jobs.slice(0, 250);
+  h += '<div class="tw"><table><thead><tr><th>Date</th><th>Vehicle</th><th>Type</th><th>Work done</th><th class="num">Odometer</th><th class="num">Labour</th><th class="num">Spares</th><th class="num">Consumables</th><th class="num">Garage</th><th class="num">Days off road</th><th class="num cd">Direct</th><th class="num ci">Indirect</th><th></th></tr></thead><tbody>';
+  jobs.forEach(j => { const t = jobTotals(j); tot.lab += t.lab; tot.sp += t.sp; tot.cn += t.cn; tot.ct += j.contractor || 0; tot.dd += j.downtimeDays || 0; tot.d += t.direct; tot.i += t.ind; });
+  shown.forEach(j => {
+    const t = jobTotals(j);
+    const used = (j.lines || []).map(l => { const it = S.items.find(i => i.id === l.itemId); return (it ? it.name : 'item') + ' ×' + nf2.format(l.qty); }).join(', ');
+    h += '<tr><td class="mono">' + esc(j.date) + '</td><td>' + esc(vname(j.vehicleId)) + '</td><td><span class="chip ' + (/repair/i.test(j.type) ? 'warn' : '') + '">' + esc(j.type) + '</span></td><td>' + esc(j.description) + (used ? '<div class="muted small">' + esc(used) + '</div>' : '') + '</td><td class="num">' + (j.odometer ? nf.format(j.odometer) : '–') + '</td><td class="num">' + m0(t.lab) + '</td><td class="num">' + m0(t.sp) + '</td><td class="num">' + m0(t.cn) + '</td><td class="num">' + m0(j.contractor || 0) + '</td><td class="num">' + (j.downtimeDays ? nf2.format(j.downtimeDays) : '–') + '</td><td class="num">' + m0(t.direct) + '</td><td class="num">' + m0(t.ind) + '</td><td class="act"><button class="btn sm danger" data-act="del-job" data-id="' + j.id + '" type="button">Delete</button></td></tr>';
+  });
+  h += '</tbody><tfoot><tr><td colspan="5">Total · ' + jobs.length + ' jobs</td><td class="num">' + m0(tot.lab) + '</td><td class="num">' + m0(tot.sp) + '</td><td class="num">' + m0(tot.cn) + '</td><td class="num">' + m0(tot.ct) + '</td><td class="num">' + nf2.format(tot.dd) + '</td><td class="num">' + m0(tot.d) + '</td><td class="num">' + m0(tot.i) + '</td><td></td></tr></tfoot></table></div>';
+  return h + '<p class="muted small" style="margin-top:8px">Indirect on a job = workshop overhead (' + nf2.format(S.settings.overheadPct) + '% of its direct cost) plus days off the road × the car’s downtime cost per day. Deleting a job returns its parts to stock.</p>';
+}
+
+function vStock() {
+  const from = PF(), toEx = PT();
+  const usage = {};
+  S.jobs.forEach(j => { const t = D(j.date); if (t < from || t >= toEx) return; (j.lines || []).forEach(l => { const u = usage[l.itemId] || (usage[l.itemId] = { q: 0, v: 0 }); u.q += l.qty; u.v += l.qty * l.unitCost; }); });
+  const val = S.items.reduce((s, i) => s + i.stock * i.unitCost, 0);
+  let h = '<div class="bar"><h2>Parts and consumables</h2><button class="btn primary" data-act="add-item" type="button">Add item</button></div>';
+  if (!S.items.length) return h + '<div class="panel empty">No stock items yet. Add the tyres, batteries, filters, oil and other parts your cars use.</div>';
+  h += '<div class="tw"><table><thead><tr><th>Code</th><th>Item</th><th>Kind</th><th class="num">On hand</th><th class="num">Unit cost</th><th class="num">Stock value</th><th class="num">Reorder at</th><th class="num">Used this period</th><th class="num">Cost this period</th><th></th></tr></thead><tbody>';
+  S.items.forEach(i => {
+    const u = usage[i.id] || { q: 0, v: 0 };
+    const chip = i.stock <= 0 ? '<span class="chip bad">out</span> ' : (i.stock <= i.reorder ? '<span class="chip warn">low</span> ' : '');
+    h += '<tr><td class="mono">' + esc(i.sku) + '</td><td>' + esc(i.name) + '</td><td>' + (i.kind === 'consumable' ? 'Consumable' : 'Spare') + '</td><td class="num">' + chip + nf2.format(i.stock) + ' ' + esc(i.unit) + '</td><td class="num">' + nf2.format(i.unitCost) + '</td><td class="num">' + m0(i.stock * i.unitCost) + '</td><td class="num">' + nf2.format(i.reorder) + '</td><td class="num">' + (u.q ? nf2.format(u.q) : '–') + '</td><td class="num">' + m0(u.v) + '</td><td class="act"><button class="btn sm" data-act="recv-item" data-id="' + i.id + '" type="button">Receive</button><button class="btn sm" data-act="edit-item" data-id="' + i.id + '" type="button">Edit</button><button class="btn sm danger" data-act="del-item" data-id="' + i.id + '" type="button">Delete</button></td></tr>';
+  });
+  return h + '</tbody><tfoot><tr><td colspan="5">Stock on hand</td><td class="num">' + m0(val) + '</td><td colspan="4"></td></tr></tfoot></table></div><p class="muted small" style="margin-top:8px">Receiving stock updates the unit cost using the weighted average. Jobs take stock out at the unit cost current on the day.</p>';
+}
+
+function vDep() {
+  const from = PF(), toEx = PT();
+  const rows = S.vehicles.map(v => ({ v, d: depSched(v, from, toEx) })).filter(r => r.d.active);
+  const T = rows.reduce((t, r) => { ['open', 'add', 'dep', 'disp', 'close'].forEach(k => t[k] += r.d[k]); t.gl += r.d.disposedIn ? (r.v.proceeds || 0) - r.d.disp : 0; return t; }, { open: 0, add: 0, dep: 0, disp: 0, close: 0, gl: 0 });
+  let h = '<div class="bar"><h2>Depreciation schedule</h2>' + periodNote() + '</div>';
+  h += '<div class="panel" style="margin-bottom:16px"><h3>Reducing balance method</h3><p class="muted" style="margin-top:4px">Each period a car loses a fixed percentage of its net book value, so charges are largest in the first years and shrink after that. The period is prorated by days, and the value never drops below salvage.</p><div class="formula">NBV = Cost × (1 − rate) ^ (days held ÷ 365)     Depreciation = NBV at start − NBV at end</div><p class="muted small" style="margin-top:8px">Leased cars are not depreciated. Their payments are shown as an ownership cost instead. When a car is sold, the difference between its NBV and the sale price is the gain or loss.</p></div>';
+  if (!rows.length) return h + '<div class="panel empty">No owned cars were held during this period.</div>';
+  h += '<div class="tw"><table><thead><tr><th>Registration</th><th>Vehicle</th><th class="num">Rate</th><th class="num">Opening NBV</th><th class="num">Additions</th><th class="num">Depreciation</th><th class="num">Disposals (NBV)</th><th class="num">Closing NBV</th><th class="num">Sale gain or (loss)</th><th></th></tr></thead><tbody>';
+  rows.forEach(r => {
+    const gl = r.d.disposedIn ? (r.v.proceeds || 0) - r.d.disp : null;
+    h += '<tr><td class="mono"><b>' + esc(r.v.reg) + '</b></td><td>' + esc([r.v.make, r.v.model].filter(Boolean).join(' ')) + '</td><td class="num">' + nf2.format(r.v.rate) + '%</td><td class="num">' + m0(r.d.open) + '</td><td class="num">' + m0(r.d.add) + '</td><td class="num">' + m0(r.d.dep) + '</td><td class="num">' + m0(r.d.disp) + '</td><td class="num">' + m0(r.d.close) + '</td><td class="num">' + (gl === null ? '–' : (gl < 0 ? '(' + mm(-gl) + ')' : m0(gl))) + '</td><td class="act"><button class="btn sm" data-act="sched" data-id="' + r.v.id + '" type="button">Year by year</button></td></tr>';
+  });
+  h += '</tbody><tfoot><tr><td colspan="3">Total</td><td class="num">' + m0(T.open) + '</td><td class="num">' + m0(T.add) + '</td><td class="num">' + m0(T.dep) + '</td><td class="num">' + m0(T.disp) + '</td><td class="num">' + m0(T.close) + '</td><td class="num">' + (T.gl < 0 ? '(' + mm(-T.gl) + ')' : m0(T.gl)) + '</td><td></td></tr></tfoot></table></div>';
+
+  const owned = S.vehicles.filter(v => v.ownership === 'owned' && v.cost > 0);
+  if (!schedVeh || !owned.find(v => v.id === schedVeh)) schedVeh = owned.length ? owned[0].id : '';
+  const v = owned.find(x => x.id === schedVeh);
+  if (v) {
+    const y0 = new Date(D(v.acquired)).getUTCFullYear();
+    const y1 = v.disposed ? new Date(D(v.disposed)).getUTCFullYear() : Math.max(y0 + 7, new Date().getFullYear() + 1);
+    let r2 = '';
+    for (let y = y0; y <= y1; y++) {
+      const d = depSched(v, Date.UTC(y, 0, 1), Date.UTC(y + 1, 0, 1));
+      const accum = v.cost - nbvAt(v, Math.min(Date.UTC(y + 1, 0, 1), holdEnd(v)));
+      r2 += '<tr><td class="mono">' + y + '</td><td class="num">' + m0(d.open) + '</td><td class="num">' + m0(d.add) + '</td><td class="num">' + m0(d.dep) + '</td><td class="num">' + m0(d.disp) + '</td><td class="num">' + m0(d.close) + '</td><td class="num">' + m0(accum) + '</td></tr>';
+    }
+    h += '<section class="panel" id="sched" style="margin-top:16px"><div class="bar" style="margin:0 0 10px"><h3>Year by year</h3><select id="schedVeh" aria-label="Vehicle" style="width:auto;max-width:100%">' + owned.map(x => '<option value="' + x.id + '"' + (x.id === schedVeh ? ' selected' : '') + '>' + esc(vfull(x)) + '</option>').join('') + '</select></div><div class="tw"><table><thead><tr><th>Calendar year</th><th class="num">Opening NBV</th><th class="num">Additions</th><th class="num">Depreciation</th><th class="num">Disposals</th><th class="num">Closing NBV</th><th class="num">Accumulated</th></tr></thead><tbody>' + r2 + '</tbody></table></div><p class="muted small" style="margin-top:8px">Cost ' + mm(v.cost) + ' · salvage ' + mm(v.salvage || 0) + ' · rate ' + nf2.format(v.rate) + '% a year</p></section>';
+  }
+  return h;
+}
+
+const GROUPS = [['own', 'Ownership', 'cc', ['dep', 'lease', 'fin']], ['dir', 'Direct', 'cd', ['fuel', 'labour', 'contractor', 'spares', 'cons', 'otherDirect']], ['ind', 'Indirect', 'ci', ['insurance', 'licence', 'driver', 'otherInd', 'overhead', 'downtime']]];
+const SUBKEY = { own: 'own', dir: 'direct', ind: 'indirect' };
+const SHORT = { dep: 'Depreciation', lease: 'Lease', fin: 'Interest and sale loss', fuel: 'Fuel', labour: 'Labour', contractor: 'Garage', spares: 'Spares', cons: 'Consumables', otherDirect: 'Tolls and other', insurance: 'Insurance', licence: 'Licence', driver: 'Driver', otherInd: 'Tracker, fines, other', overhead: 'Overhead', downtime: 'Downtime' };
+
+function vCosts() {
+  const from = PF(), toEx = PT();
+  let h = '<div class="bar"><h2>Cost report</h2>' + periodNote() + '</div>';
+  if (!S.vehicles.length) return h + emptyVeh;
+  const P = portfolio(from, toEx), T = P.T;
+  const rows = P.rows.filter(r => r.c.total > 0 || r.d.active);
+  const pc = x => (T.total ? nf1.format(x / T.total * 100) : 0) + '% of total';
+  h += '<div class="kpis"><div class="kpi cap"><div class="l">Ownership</div><div class="v">' + mm(T.own) + '</div><div class="s">' + pc(T.own) + '</div></div><div class="kpi dir"><div class="l">Direct</div><div class="v">' + mm(T.direct) + '</div><div class="s">' + pc(T.direct) + '</div></div><div class="kpi ind"><div class="l">Indirect</div><div class="v">' + mm(T.indirect) + '</div><div class="s">' + pc(T.indirect) + '</div></div><div class="kpi"><div class="l">Total</div><div class="v">' + mm(T.total) + '</div><div class="s">' + perKm(T.total, T.km) + ' per km over ' + nf.format(T.km) + ' km</div></div></div>';
+  if (!rows.length) return h + '<div class="panel empty">No costs in this period.</div>';
+  const mx = Math.max(1, ...rows.map(r => r.c.total));
+  h += '<section class="panel" style="margin-bottom:16px"><h3>Total cost by car</h3>' + legend;
+  rows.slice().sort((a, b) => b.c.total - a.c.total).forEach(r => { h += '<div class="hb"><span class="nm" title="' + esc(vfull(r.v)) + '">' + esc(r.v.reg + ' ' + (r.v.model || '')) + '</span><div class="trk"><div class="cap-bg" style="width:' + (r.c.own / mx * 100) + '%"></div><div class="dir-bg" style="width:' + (r.c.direct / mx * 100) + '%"></div><div class="ind-bg" style="width:' + (r.c.indirect / mx * 100) + '%"></div></div><span class="num">' + mm(r.c.total) + '</span></div>'; });
+  h += '</section>';
+  h += '<div class="tw"><table><thead><tr class="grp"><th colspan="2"></th>' + GROUPS.map(g => '<th colspan="' + (g[3].length + 1) + '" class="' + g[2] + '">' + g[1] + '</th>').join('') + '<th colspan="5"></th></tr><tr><th>Registration</th><th>Vehicle</th>' + GROUPS.map(g => g[3].map(k => '<th class="num ' + g[2] + '">' + SHORT[k] + '</th>').join('') + '<th class="num ' + g[2] + '">Subtotal</th>').join('') + '<th class="num">Total</th><th class="num">Km</th><th class="num">Cost per km</th><th class="num">Running per km</th><th class="num">Km per litre</th></tr></thead><tbody>';
+  rows.forEach(r => {
+    const c = r.c;
+    h += '<tr><td class="mono"><b>' + esc(r.v.reg) + '</b></td><td>' + esc([r.v.make, r.v.model].filter(Boolean).join(' ')) + '</td>' + GROUPS.map(g => g[3].map(k => '<td class="num">' + m0(c[k]) + '</td>').join('') + '<td class="num"><b>' + m0(c[SUBKEY[g[0]]]) + '</b></td>').join('') + '<td class="num"><b>' + m0(c.total) + '</b></td><td class="num">' + (c.km ? nf.format(c.km) : '–') + '</td><td class="num">' + perKm(c.total, c.km) + '</td><td class="num">' + perKm(c.direct + c.indirect, c.km) + '</td><td class="num">' + (c.kmpl ? nf1.format(c.kmpl) : '–') + '</td></tr>';
+  });
+  h += '</tbody><tfoot><tr><td colspan="2">Total</td>' + GROUPS.map(g => g[3].map(k => '<td class="num">' + m0(T[k]) + '</td>').join('') + '<td class="num">' + m0(T[SUBKEY[g[0]]]) + '</td>').join('') + '<td class="num">' + m0(T.total) + '</td><td class="num">' + nf.format(T.km) + '</td><td class="num">' + perKm(T.total, T.km) + '</td><td class="num">' + perKm(T.direct + T.indirect, T.km) + '</td><td></td></tr></tfoot></table></div>';
+
+  const dep = {};
+  rows.forEach(r => { const k = r.v.dept || 'No department'; const d = dep[k] || (dep[k] = { n: 0, km: 0, own: 0, direct: 0, indirect: 0, total: 0 }); d.n++; ['km', 'own', 'direct', 'indirect', 'total'].forEach(f => d[f] += r.c[f]); });
+  h += '<section style="margin-top:16px"><h3 style="margin-bottom:8px">By department</h3><div class="tw"><table><thead><tr><th>Department</th><th class="num">Cars</th><th class="num">Km</th><th class="num">Ownership</th><th class="num">Direct</th><th class="num">Indirect</th><th class="num">Total</th><th class="num">Cost per km</th></tr></thead><tbody>' + Object.keys(dep).sort().map(k => { const d = dep[k]; return '<tr><td>' + esc(k) + '</td><td class="num">' + d.n + '</td><td class="num">' + nf.format(d.km) + '</td><td class="num">' + m0(d.own) + '</td><td class="num">' + m0(d.direct) + '</td><td class="num">' + m0(d.indirect) + '</td><td class="num"><b>' + m0(d.total) + '</b></td><td class="num">' + perKm(d.total, d.km) + '</td></tr>'; }).join('') + '</tbody></table></div></section>';
+  h += '<section class="panel" style="margin-top:16px"><h3>How costs are classed</h3><dl class="def"><dt>Direct</dt><dd>Costs that change with how much and how the car is used: fuel, servicing labour, parts and consumables fitted, garage invoices, tolls, parking, cleaning and repairs bought outside.</dd><dt>Indirect</dt><dd>Costs of having the car available: insurance, licence and inspection, driver wages, trackers, fines, workshop overhead (' + nf2.format(S.settings.overheadPct) + '% of servicing cost) and downtime (days off the road × the car’s cost per day).</dd><dt>Ownership</dt><dd>What it costs to hold the car: depreciation on a reducing balance for owned cars, lease payments for leased cars, loan interest, and any loss on sale. Insurance, licence and tracker costs are spread over the days they cover.</dd></dl></section>';
+  return h;
+}
+
+function vLife() {
+  let h = '<div class="bar"><h2>Life of a car</h2></div>';
+  if (!S.vehicles.length) return h + emptyVeh;
+  if (!lifeVeh || !vget(lifeVeh)) lifeVeh = (S.vehicles.find(isLive) || S.vehicles[0]).id;
+  const v = vget(lifeVeh);
+  const nowEx = D(todayISO()) + DAY;
+  const from = D(v.acquired), toEx = Math.min(holdEnd(v), nowEx);
+  h += '<div class="bar"><div class="grow"><select id="lifeVeh" aria-label="Vehicle">' + S.vehicles.map(x => '<option value="' + x.id + '"' + (x.id === lifeVeh ? ' selected' : '') + '>' + esc(vfull(x)) + ' (' + status(x) + ')</option>').join('') + '</select></div><span class="muted small">From ' + esc(v.acquired) + ' to ' + (v.disposed ? esc(v.disposed) : 'today') + ' · amounts in ' + esc(cur()) + '</span></div>';
+  if (toEx <= from) return h + '<div class="panel empty">This car has not entered service yet.</div>';
+  const c = costFor(v, from, toEx);
+  const months = (toEx - from) / DAY / 30.4375;
+  const run = c.direct + c.indirect;
+  const k = (cls, l, val, s) => '<div class="kpi ' + cls + '"><div class="l">' + l + '</div><div class="v">' + val + '</div><div class="s">' + s + '</div></div>';
+  h += '<div class="kpis">' +
+    k('', v.ownership === 'owned' ? 'Purchase price' : 'Monthly lease', v.ownership === 'owned' ? mm(v.cost) : mm(v.leaseMonthly || 0), v.ownership === 'owned' ? (v.disposed ? 'sold for ' + mm(v.proceeds || 0) : 'NBV today ' + mm(nbvAt(v, nowEx))) : 'ends ' + esc(v.leaseEnd || 'not set')) +
+    k('cap', 'Ownership cost', mm(c.own), v.ownership === 'owned' ? 'depreciation and sale loss' : 'lease and finance') +
+    k('dir', 'Direct costs', mm(c.direct), 'fuel, servicing, parts') +
+    k('ind', 'Indirect costs', mm(c.indirect), 'insurance, driver, overhead') +
+    k('', 'Total cost of the car', mm(c.total), nf1.format(months) + ' months · ' + mm(c.total / Math.max(months, 1)) + ' a month') +
+    k('', 'Distance driven', nf.format(c.km) + ' km', 'odometer ' + nf.format(latestOdo(v))) +
+    k('', 'Cost per km', perKm(c.total, c.km), 'running only: ' + perKm(run, c.km)) + '</div>';
+
+  const mx = Math.max(1, ...BK.map(b => c[b[0]]));
+  h += '<div class="grid g2"><section class="panel"><h3>Where the money went</h3><p class="muted small">Whole life of this car</p>';
+  BK.filter(b => c[b[0]] > 0.5).sort((a, b) => c[b[0]] - c[a[0]]).forEach(b => { h += '<div class="hb"><span class="nm" title="' + esc(b[1]) + '">' + esc(b[1]) + '</span><div class="trk"><div class="' + clsBg[b[2]] + '" style="width:' + (c[b[0]] / mx * 100) + '%"></div></div><span class="num">' + mm(c[b[0]]) + '</span></div>'; });
+  h += '</section>';
+
+  const y0 = new Date(from).getUTCFullYear(), y1 = new Date(toEx - 1).getUTCFullYear();
+  const yrs = [];
+  for (let y = y0; y <= y1; y++) { const w0 = Math.max(from, Date.UTC(y, 0, 1)), w1 = Math.min(toEx, Date.UTC(y + 1, 0, 1)); if (w1 > w0) { const yc = costFor(v, w0, w1); yrs.push({ y, c: yc, own: yc.own, dir: yc.direct, ind: yc.indirect, t: yc.total }); } }
+  const ch = colsHtml(yrs, d => String(d.y), d => d.y + ': ' + mm(d.t) + ' ' + cur());
+  h += '<section class="panel"><h3>Cost by year</h3><p class="muted small" style="margin-bottom:8px">Tallest year: ' + mm(ch.mx) + ' ' + esc(cur()) + '</p>' + legend + '<div class="cols">' + ch.html + '</div></section></div>';
+
+  h += '<section style="margin-top:16px"><h3 style="margin-bottom:8px">Year by year</h3><div class="tw"><table><thead><tr><th>Year</th><th class="num">Km</th><th class="num cc">Ownership</th><th class="num cd">Direct</th><th class="num ci">Indirect</th><th class="num">Total</th><th class="num">Cost per km</th><th class="num">Running per km</th><th class="num">Km per litre</th></tr></thead><tbody>' +
+    yrs.map(r => '<tr><td class="mono">' + r.y + '</td><td class="num">' + (r.c.km ? nf.format(r.c.km) : '–') + '</td><td class="num">' + m0(r.own) + '</td><td class="num">' + m0(r.dir) + '</td><td class="num">' + m0(r.ind) + '</td><td class="num"><b>' + m0(r.t) + '</b></td><td class="num">' + perKm(r.t, r.c.km) + '</td><td class="num">' + perKm(r.dir + r.ind, r.c.km) + '</td><td class="num">' + (r.c.kmpl ? nf1.format(r.c.kmpl) : '–') + '</td></tr>').join('') +
+    '</tbody><tfoot><tr><td>Life</td><td class="num">' + nf.format(c.km) + '</td><td class="num">' + m0(c.own) + '</td><td class="num">' + m0(c.direct) + '</td><td class="num">' + m0(c.indirect) + '</td><td class="num">' + m0(c.total) + '</td><td class="num">' + perKm(c.total, c.km) + '</td><td class="num">' + perKm(run, c.km) + '</td><td></td></tr></tfoot></table></div><p class="muted small" style="margin-top:8px">When running cost per km keeps rising year after year, the car may be cheaper to replace than to keep.</p></section>';
+
+  const led = [];
+  S.expenses.forEach(e => { if (e.vehicleId === v.id) led.push({ date: e.date, kind: (CAT[e.category] || CAT.other).label, text: [e.vendor, e.litres ? nf1.format(e.litres) + ' L' : '', e.notes].filter(Boolean).join(' · '), odo: e.odometer, amt: e.amount }); });
+  S.jobs.forEach(j => { if (j.vehicleId === v.id) led.push({ date: j.date, kind: j.type, text: j.description, odo: j.odometer, amt: jobTotals(j).direct }); });
+  led.sort((a, b) => b.date.localeCompare(a.date));
+  h += '<section style="margin-top:16px"><h3 style="margin-bottom:8px">Everything spent on this car</h3><div class="tw"><table><thead><tr><th>Date</th><th>What</th><th>Details</th><th class="num">Odometer</th><th class="num">Amount</th></tr></thead><tbody>' +
+    led.slice(0, 200).map(r => '<tr><td class="mono">' + esc(r.date) + '</td><td>' + esc(r.kind) + '</td><td>' + esc(r.text) + '</td><td class="num">' + (r.odo ? nf.format(r.odo) : '–') + '</td><td class="num">' + mm(r.amt) + '</td></tr>').join('') +
+    '</tbody></table></div><p class="muted small" style="margin-top:8px">' + (led.length > 200 ? 'Showing the latest 200 of ' + led.length + ' entries. ' : led.length + ' entries. ') + 'Job amounts are direct cost only: labour, parts and garage invoices. Insurance and licence appear at their full amount here and are spread over their cover dates in the totals above.</p></section>';
+  return h;
+}
+
+function vData() {
+  const s = S.settings;
+  let h = '<div class="bar"><h2>Data and settings</h2></div><div class="grid g2">';
+  h += '<section class="panel"><h3>Costing settings</h3><div class="fg" style="margin-top:10px">' +
+    fld('Currency code', 'sCur', 'text', s.currency) + fld('Workshop overhead (% of servicing cost)', 'sOh', 'number', s.overheadPct, 'step="0.1" min="0"') + fld('Default labour rate per hour', 'sLab', 'number', s.labourRate, 'min="0"') +
+    '</div><p class="muted small" style="margin-top:10px">Changes save as you type. The overhead percentage applies to every job in every period.</p></section>';
+  h += '<section class="panel"><h3>Back up and move your data</h3><p class="muted" style="margin:6px 0 10px">Data lives in this browser only. Save a backup file regularly, and use it to restore or move to another device.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-act="exp-json" type="button">Backup (JSON)</button><button class="btn" data-act="exp-vehicles" type="button">Vehicle register (CSV)</button><button class="btn" data-act="exp-expenses" type="button">Expenses (CSV)</button><button class="btn" data-act="exp-costs" type="button">Cost report (CSV)</button><button class="btn" data-act="imp" type="button">Restore from backup</button></div></section>';
+  h += '<section class="panel"><h3>Start over</h3><p class="muted" style="margin:6px 0 10px">Remove every vehicle, expense, job and stock item, or reload the example data.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn danger" data-act="clear-all" type="button">Clear everything</button><button class="btn" data-act="load-example" type="button">Load example data</button></div></section></div>';
+  return h;
+}
+
+/* ---------- forms ---------- */
+function fld(label, id, type, val, attrs, note) {
+  return '<label class="f"><span>' + label + '</span><input id="' + id + '" type="' + type + '" value="' + esc(val) + '" ' + (attrs || '') + '>' + (note ? '<small>' + note + '</small>' : '') + '</label>';
+}
+function sel(label, id, opts, val, wide) {
+  return '<label class="f' + (wide ? ' wide' : '') + '"><span>' + label + '</span><select id="' + id + '">' + opts.map(o => { const v = Array.isArray(o) ? o[0] : o, t = Array.isArray(o) ? o[1] : o; return '<option value="' + esc(v) + '"' + (String(v) === String(val) ? ' selected' : '') + '>' + esc(t) + '</option>'; }).join('') + '</select></label>';
+}
+let modalSave = null;
+function openModal(title, body, onSave, saveLabel) {
+  $('#modalRoot').innerHTML = '<div class="ov" id="ov"><div class="modal" role="dialog" aria-modal="true" aria-label="' + esc(title) + '"><header><h2>' + esc(title) + '</h2><button class="btn sm" data-act="close" type="button" aria-label="Close">Close</button></header>' + body + '<div class="merr" id="mErr" role="alert"></div><div class="mfoot"><button class="btn" data-act="close" type="button">Cancel</button>' + (onSave ? '<button class="btn primary" id="mSave" type="button">' + (saveLabel || 'Save') + '</button>' : '') + '</div></div></div>';
+  modalSave = onSave || (() => { });
+  const f = $('#modalRoot input,#modalRoot select,#modalRoot textarea'); if (f) f.focus();
+}
+const closeModal = () => { $('#modalRoot').innerHTML = ''; modalSave = null; };
+const mErr = t => { $('#mErr').textContent = t; };
+const val = id => $('#' + id).value.trim();
+const numv = id => { const v = parseFloat($('#' + id).value); return isNaN(v) ? 0 : v; };
+
+function vehicleForm(id) {
+  const a = id ? vget(id) : null;
+  const d = a || { reg: '', make: '', model: '', year: new Date().getFullYear(), vin: '', dept: '', driver: '', fuel: 'Diesel', ownership: 'owned', acquired: todayISO(), odoStart: 0, cost: '', salvage: 0, rate: 25, leaseMonthly: '', leaseEnd: '', downtimePerDay: 0, serviceIntervalKm: 10000, disposed: '', disposalOdo: '', proceeds: '', notes: '' };
+  const depts = [...new Set(S.vehicles.map(x => x.dept).filter(Boolean))];
+  const body = '<div class="fg">' +
+    fld('Registration', 'aReg', 'text', d.reg, 'placeholder="e.g. KDG 214X"') + fld('Make', 'aMake', 'text', d.make, 'placeholder="Toyota"') + fld('Model', 'aModel', 'text', d.model, 'placeholder="Hilux"') + fld('Year', 'aYear', 'number', d.year, 'min="1980"') +
+    fld('Chassis / VIN', 'aVin', 'text', d.vin) + sel('Fuel', 'aFuel', ['Diesel', 'Petrol', 'Hybrid', 'Electric'], d.fuel) +
+    '<label class="f"><span>Department</span><input id="aDept" list="deptList" value="' + esc(d.dept) + '"><datalist id="deptList">' + depts.map(x => '<option value="' + esc(x) + '">').join('') + '</datalist></label>' +
+    fld('Driver or user', 'aDriver', 'text', d.driver) + sel('Held as', 'aOwn', [['owned', 'Owned'], ['leased', 'Leased in']], d.ownership) + fld('Acquired / lease start', 'aAcq', 'date', d.acquired) + fld('Odometer at acquisition (km)', 'aOdo', 'number', d.odoStart, 'min="0"') +
+    '<div class="sec" id="secOwn">Ownership and depreciation</div>' +
+    '<div class="f own"><span>Purchase price</span><input id="aCost" type="number" min="0" value="' + esc(d.cost) + '"></div>' +
+    '<div class="f own"><span>Expected value at end of life</span><input id="aSal" type="number" min="0" value="' + esc(d.salvage) + '"></div>' +
+    '<div class="f own"><span>Reducing balance rate (% a year)</span><input id="aRate" type="number" min="0" max="100" step="0.01" value="' + esc(d.rate) + '"></div>' +
+    '<div class="f own"><span>Work out rate from useful life</span><div style="display:flex;gap:6px"><input id="aLife" type="number" min="1" placeholder="Years" aria-label="Useful life in years"><button class="btn" id="aSuggest" type="button">Suggest</button></div><small>Uses 1 − (end value ÷ price) ^ (1 ÷ years)</small></div>' +
+    '<div class="sec lse" id="secLease">Lease terms</div>' +
+    '<div class="f lse"><span>Lease payment per month</span><input id="aLease" type="number" min="0" value="' + esc(d.leaseMonthly) + '"></div>' +
+    '<div class="f lse"><span>Lease ends</span><input id="aLeaseEnd" type="date" value="' + esc(d.leaseEnd) + '"></div>' +
+    '<div class="sec">Servicing and downtime</div>' +
+    fld('Service every (km)', 'aSvc', 'number', d.serviceIntervalKm, 'min="0"', 'Used for service reminders') + fld('Cost per day off the road', 'aDown', 'number', d.downtimePerDay, 'min="0"', 'Hire car or lost work while it is in the garage') +
+    '<div class="sec">Sale or return</div>' + fld('Date sold or returned', 'aDisp', 'date', d.disposed, '', 'Leave empty while still in use') + fld('Odometer at sale (km)', 'aDispOdo', 'number', d.disposalOdo, 'min="0"') + fld('Sale proceeds', 'aProc', 'number', d.proceeds, 'min="0"', 'Enter 0 if scrapped') +
+    '<label class="f wide"><span>Notes</span><textarea id="aNotes">' + esc(d.notes) + '</textarea></label></div>';
+  openModal(a ? 'Edit vehicle' : 'Add vehicle', body, () => {
+    const o = {
+      id: a ? a.id : uid(), reg: val('aReg').toUpperCase(), make: val('aMake'), model: val('aModel'), year: numv('aYear'), vin: val('aVin'), fuel: $('#aFuel').value, dept: val('aDept'), driver: val('aDriver'),
+      ownership: $('#aOwn').value, acquired: $('#aAcq').value, odoStart: numv('aOdo'), cost: numv('aCost'), salvage: numv('aSal'), rate: numv('aRate'), leaseMonthly: numv('aLease'), leaseEnd: $('#aLeaseEnd').value,
+      serviceIntervalKm: numv('aSvc'), downtimePerDay: numv('aDown'), disposed: $('#aDisp').value, disposalOdo: numv('aDispOdo'), proceeds: numv('aProc'), notes: $('#aNotes').value.trim()
+    };
+    if (!o.reg) return mErr('Enter the registration number.');
+    if (S.vehicles.some(x => x.reg.toLowerCase() === o.reg.toLowerCase() && x.id !== o.id)) return mErr('Another vehicle already has that registration.');
+    if (!o.acquired) return mErr('Enter the acquisition or lease start date.');
+    if (o.disposed && D(o.disposed) < D(o.acquired)) return mErr('The sale date is before the acquisition date.');
+    if (o.ownership === 'owned') {
+      if (!(o.cost > 0)) return mErr('Enter the purchase price.');
+      if (o.salvage > o.cost) return mErr('End of life value cannot be higher than the price.');
+      if (o.rate < 0 || o.rate >= 100) return mErr('The rate must be at least 0 and below 100.');
+    } else {
+      o.cost = 0; o.salvage = 0; o.rate = 0;
+      if (!(o.leaseMonthly > 0)) return mErr('Enter the monthly lease payment.');
+      if (o.leaseEnd && D(o.leaseEnd) < D(o.acquired)) return mErr('The lease ends before it starts.');
+    }
+    if (a) Object.assign(a, o); else S.vehicles.push(o);
+    closeModal(); persist(); toast('Vehicle saved');
+  });
+  syncOwn();
+}
+function syncOwn() {
+  const own = $('#aOwn'); if (!own) return;
+  const leased = own.value === 'leased';
+  document.querySelectorAll('#modalRoot .own').forEach(e => e.hidden = leased);
+  document.querySelectorAll('#modalRoot .lse').forEach(e => e.hidden = !leased);
+  $('#secOwn').hidden = leased;
+}
+
+function expenseForm() {
+  const vs = S.vehicles.filter(v => status(v) !== 'Sold' && status(v) !== 'Returned');
+  if (!vs.length) { toast('Add a vehicle first.'); return; }
+  const body = '<div class="fg">' + sel('Vehicle', 'xVeh', vs.map(v => [v.id, vfull(v)]), expVeh || vs[0].id) + fld('Date', 'xDate', 'date', todayISO()) +
+    sel('Category', 'xCat', CATS.map(c => [c[0], c[1]]), 'fuel') + fld('Amount', 'xAmt', 'number', '', 'min="0" step="0.01"') +
+    fld('Odometer (km)', 'xOdo', 'number', '', 'min="0"', 'Needed for cost per km and fuel economy') + '<div class="f" id="xLitWrap">' + '<span>Litres</span><input id="xLit" type="number" min="0" step="0.01"><small id="xPpl"></small></div>' +
+    fld('Paid to', 'xVendor', 'text', '', 'placeholder="Station, insurer, garage"') + fld('Notes', 'xNotes', 'text', '') +
+    '<div class="sec">Period covered</div>' + fld('Covers from', 'xFrom', 'date', '', '', 'For insurance, licences and subscriptions') + fld('Covers to', 'xTo', 'date', '', '', 'The cost is spread over these days') + '</div>';
+  openModal('Add expense', body, () => {
+    const o = { id: uid(), vehicleId: $('#xVeh').value, date: $('#xDate').value, category: $('#xCat').value, amount: numv('xAmt'), odometer: numv('xOdo'), litres: $('#xCat').value === 'fuel' ? numv('xLit') : 0, vendor: val('xVendor'), notes: val('xNotes'), coverFrom: $('#xFrom').value, coverTo: $('#xTo').value };
+    if (!o.date) return mErr('Enter the date.');
+    if (!(o.amount > 0)) return mErr('Enter the amount.');
+    if ((o.coverFrom && !o.coverTo) || (!o.coverFrom && o.coverTo)) return mErr('Enter both cover dates, or leave both empty.');
+    if (o.coverFrom && D(o.coverTo) < D(o.coverFrom)) return mErr('The cover ends before it starts.');
+    S.expenses.push(o); closeModal(); persist(); toast('Expense saved');
+  });
+  syncExp();
+}
+function syncExp() {
+  const c = $('#xCat'); if (!c) return;
+  $('#xLitWrap').hidden = c.value !== 'fuel';
+  if (['insurance', 'licence', 'tracker'].includes(c.value) && !$('#xFrom').value && $('#xDate').value) {
+    const s = new Date(D($('#xDate').value));
+    $('#xFrom').value = iso(s.getTime());
+    $('#xTo').value = iso(Date.UTC(s.getUTCFullYear() + 1, s.getUTCMonth(), s.getUTCDate()) - DAY);
+  }
+}
+
+function itemForm(id) {
+  const i = id ? S.items.find(x => x.id === id) : null;
+  const d = i || { sku: '', name: '', kind: 'spare', unit: 'pc', unitCost: '', stock: 0, reorder: 0 };
+  const body = '<div class="fg">' + fld('Code', 'iSku', 'text', d.sku, 'placeholder="SP-010"') + fld('Name', 'iName', 'text', d.name) + sel('Kind', 'iKind', [['spare', 'Spare part'], ['consumable', 'Consumable']], d.kind) + fld('Unit', 'iUnit', 'text', d.unit, 'placeholder="pc, L, set"') + fld('Unit cost', 'iCost', 'number', d.unitCost, 'min="0" step="0.01"') + fld('On hand', 'iStock', 'number', d.stock, 'step="any"') + fld('Reorder level', 'iRe', 'number', d.reorder, 'min="0" step="any"') + '</div>';
+  openModal(i ? 'Edit item' : 'Add item', body, () => {
+    const o = { id: i ? i.id : uid(), sku: val('iSku'), name: val('iName'), kind: $('#iKind').value, unit: val('iUnit') || 'pc', unitCost: numv('iCost'), stock: numv('iStock'), reorder: numv('iRe') };
+    if (!o.sku || !o.name) return mErr('Enter a code and a name.');
+    if (S.items.some(x => x.sku.toLowerCase() === o.sku.toLowerCase() && x.id !== o.id)) return mErr('That code is already in use.');
+    if (o.stock < 0) return mErr('Stock cannot be negative.');
+    if (i) Object.assign(i, o); else S.items.push(o);
+    closeModal(); persist(); toast('Item saved');
+  });
+}
+function recvForm(id) {
+  const i = S.items.find(x => x.id === id);
+  openModal('Receive ' + i.name, '<div class="fg">' + fld('Quantity received (' + esc(i.unit) + ')', 'rQty', 'number', '', 'min="0" step="any"') + fld('Unit cost on this delivery', 'rCost', 'number', i.unitCost, 'min="0" step="0.01"', 'Current average: ' + nf2.format(i.unitCost)) + '</div>', () => {
+    const q = numv('rQty'), c = numv('rCost');
+    if (!(q > 0)) return mErr('Enter the quantity received.');
+    i.unitCost = (i.stock * i.unitCost + q * c) / (i.stock + q);
+    i.stock += q;
+    closeModal(); persist(); toast('Stock received');
+  }, 'Add to stock');
+}
+
+function jobForm() {
+  const vs = S.vehicles.filter(v => status(v) !== 'Sold' && status(v) !== 'Returned');
+  if (!vs.length) { toast('Add a vehicle first.'); return; }
+  const itemOpts = '<option value="">Choose item</option>' + S.items.map(i => '<option value="' + i.id + '">' + esc(i.name) + ' (' + nf2.format(i.stock) + ' ' + esc(i.unit) + ' on hand)</option>').join('');
+  const body = '<div class="fg">' + sel('Vehicle', 'jVeh', vs.map(v => [v.id, vfull(v)]), maintVeh || vs[0].id) + fld('Date', 'jDate', 'date', todayISO()) + sel('Type', 'jType', ['Service', 'Repair', 'Tyres & battery', 'Accident repair', 'Inspection']) +
+    fld('Work done', 'jDesc', 'text', '', 'placeholder="e.g. 20,000 km service"') + fld('Odometer (km)', 'jOdo', 'number', '', 'min="0"') + fld('Labour hours (own workshop)', 'jHrs', 'number', '', 'min="0" step="0.25"') + fld('Labour rate per hour', 'jRate', 'number', S.settings.labourRate, 'min="0"') +
+    fld('Garage or contractor invoice', 'jExt', 'number', '', 'min="0"', 'Cost of work done outside') + fld('Days off the road', 'jDown', 'number', '', 'min="0" step="0.5"') +
+    '<div class="sec">Parts and consumables taken from stock</div><div class="f wide"><div class="lines" id="jLines"></div><div><button class="btn sm" id="addLine" type="button">Add item</button></div></div></div>';
+  openModal('Log a job', body, () => {
+    const o = { id: uid(), date: $('#jDate').value, vehicleId: $('#jVeh').value, type: $('#jType').value, description: val('jDesc'), odometer: numv('jOdo'), labourHours: numv('jHrs'), labourRate: numv('jRate'), downtimeDays: numv('jDown'), contractor: numv('jExt'), lines: [] };
+    if (!o.date) return mErr('Enter the date.');
+    if (!o.description) return mErr('Describe the work done.');
+    const need = {};
+    for (const row of document.querySelectorAll('#jLines .ln')) {
+      const iid = row.querySelector('select').value, q = parseFloat(row.querySelector('input').value);
+      if (!iid && isNaN(q)) continue;
+      if (!iid || !(q > 0)) return mErr('Each item line needs an item and a quantity above zero.');
+      need[iid] = (need[iid] || 0) + q;
+    }
+    for (const iid in need) { const it = S.items.find(x => x.id === iid); if (need[iid] > it.stock + 1e-9) return mErr('Only ' + nf2.format(it.stock) + ' ' + it.unit + ' of ' + it.name + ' on hand.'); }
+    for (const iid in need) { const it = S.items.find(x => x.id === iid); o.lines.push({ itemId: iid, qty: need[iid], unitCost: it.unitCost, kind: it.kind }); it.stock -= need[iid]; }
+    S.jobs.push(o); closeModal(); persist(); toast('Job logged');
+  });
+  const add = () => { const d = document.createElement('div'); d.className = 'ln'; d.innerHTML = '<select aria-label="Item">' + itemOpts + '</select><input type="number" min="0" step="any" placeholder="Qty" aria-label="Quantity"><button class="btn sm" type="button" data-act="rm-line">Remove</button>'; $('#jLines').appendChild(d); };
+  $('#addLine').onclick = add;
+  if (S.items.length) add();
+}
+
+/* ---------- export / import ---------- */
+function csvCell(v) { v = String(v == null ? '' : v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+const toCsv = rows => rows.map(r => r.map(csvCell).join(',')).join('\n');
+function blobDownload(name, text) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type: name.endsWith('.csv') ? 'text/csv' : 'application/json' }));
+  a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+async function sendFile(name, text) {
+  if (typeof claude === 'undefined') { blobDownload(name, text); toast('Saved ' + name); return; }
+  try {
+    const dl = await claude.use('downloads');
+    if (dl) { await dl.save({ filename: name, data: text }); toast('Saved ' + name); return; }
+  } catch (e) { if (e && e.code === 'declined') return; }
+  openModal('Copy ' + name, '<p class="muted" style="margin-bottom:8px">Downloads are not available here. Copy this text and save it as ' + esc(name) + '.</p><textarea id="cpy" readonly style="min-height:200px;font-family:var(--f-mono);font-size:12px">' + esc(text) + '</textarea>', null);
+  $('#cpy').select();
+}
+function importForm() {
+  openModal('Restore from backup', '<p class="muted" style="margin-bottom:8px">Choose a backup file or paste its contents. This replaces everything currently here.</p><input id="impFile" type="file" accept=".json,application/json"><label class="f" style="margin-top:10px"><span>Or paste backup text</span><textarea id="impTxt" style="min-height:120px;font-family:var(--f-mono);font-size:12px"></textarea></label>', () => {
+    try {
+      const o = JSON.parse($('#impTxt').value);
+      if (!o || !Array.isArray(o.vehicles) || !Array.isArray(o.items) || !Array.isArray(o.jobs)) throw new Error('shape');
+      S = Object.assign({ settings: { currency: 'KES', overheadPct: 10, labourRate: 2500 }, expenses: [], period: { preset: 'ytd', from: '', to: '' }, example: false }, o);
+      if (!S.period || !S.period.preset) S.period = { preset: 'ytd', from: '', to: '' };
+      if (S.period.preset !== 'custom' || !S.period.from) applyPreset(S.period.preset === 'custom' ? 'ytd' : S.period.preset);
+      closeModal(); renderPeriod(); persist(); toast('Backup restored');
+    } catch (e) { mErr('That does not look like an Asset Ledger backup for vehicles.'); }
+  }, 'Replace data');
+  $('#impFile').onchange = ev => { const f = ev.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => { $('#impTxt').value = r.result; }; r.readAsText(f); };
+}
+
+/* ---------- events ---------- */
+let armed = null;
+function armDelete(btn, run) {
+  if (armed && armed.btn === btn) { clearTimeout(armed.t); armed = null; run(); return; }
+  if (armed) { clearTimeout(armed.t); armed.btn.textContent = armed.label; armed.btn.classList.remove('confirm'); }
+  const label = btn.textContent;
+  btn.textContent = 'Sure?'; btn.classList.add('confirm');
+  armed = { btn, label, t: setTimeout(() => { btn.textContent = label; btn.classList.remove('confirm'); armed = null; }, 3000) };
+}
+
+document.addEventListener('click', ev => {
+  if (ev.target.id === 'mSave' && modalSave) { modalSave(); return; }
+  if (ev.target.id === 'aSuggest') {
+    const c = numv('aCost'), n = numv('aLife'); let s = numv('aSal');
+    if (!(c > 0) || !(n > 0)) return mErr('Enter the price and a useful life first.');
+    if (s >= c) return mErr('End of life value must be lower than the price.');
+    const assumed = !(s > 0); if (assumed) s = c * 0.05;
+    $('#aRate').value = ((1 - Math.pow(s / c, 1 / n)) * 100).toFixed(2);
+    mErr(assumed ? 'With no end of life value the rate cannot reach zero, so 5% of the price is assumed at the end of life.' : '');
+    return;
+  }
+  const t = ev.target.closest('[data-tab],[data-act]');
+  if (!t) { if (ev.target.id === 'ov') closeModal(); return; }
+  if (t.dataset.tab) { tab = t.dataset.tab; render(); window.scrollTo(0, 0); return; }
+  const act = t.dataset.act, id = t.dataset.id;
+  if (act === 'close') return closeModal();
+  if (act === 'add-vehicle') return vehicleForm();
+  if (act === 'edit-vehicle') return vehicleForm(id);
+  if (act === 'life') { lifeVeh = id; tab = 'life'; render(); window.scrollTo(0, 0); return; }
+  if (act === 'del-vehicle') return armDelete(t, () => {
+    if (S.jobs.some(j => j.vehicleId === id) || S.expenses.some(e => e.vehicleId === id)) { toast('This vehicle has recorded costs. Enter a sale date instead of deleting it.'); render(); return; }
+    S.vehicles = S.vehicles.filter(v => v.id !== id); persist(); toast('Vehicle deleted');
+  });
+  if (act === 'add-expense') return expenseForm();
+  if (act === 'del-expense') return armDelete(t, () => { S.expenses = S.expenses.filter(e => e.id !== id); persist(); toast('Expense deleted'); });
+  if (act === 'add-item') return itemForm();
+  if (act === 'edit-item') return itemForm(id);
+  if (act === 'recv-item') return recvForm(id);
+  if (act === 'del-item') return armDelete(t, () => {
+    if (S.jobs.some(j => (j.lines || []).some(l => l.itemId === id))) { toast('This item appears on past jobs, so it cannot be deleted. Set its stock to zero instead.'); render(); return; }
+    S.items = S.items.filter(i => i.id !== id); persist(); toast('Item deleted');
+  });
+  if (act === 'add-job') return jobForm();
+  if (act === 'del-job') return armDelete(t, () => {
+    const j = S.jobs.find(x => x.id === id);
+    (j.lines || []).forEach(l => { const it = S.items.find(i => i.id === l.itemId); if (it) it.stock += l.qty; });
+    S.jobs = S.jobs.filter(x => x.id !== id); persist(); toast('Job deleted and parts returned to stock');
+  });
+  if (act === 'rm-line') return t.closest('.ln').remove();
+  if (act === 'sched') { schedVeh = id; render(); const e = $('#sched'); if (e) e.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+  if (act === 'clear-all') return armDelete(t, () => { S = { settings: S.settings, vehicles: [], items: [], jobs: [], expenses: [], period: S.period, example: false }; persist(); toast('Everything cleared'); });
+  if (act === 'load-example') return armDelete(t, () => { const keep = S.period; S = seed(); S.period = keep; persist(); toast('Example data loaded'); });
+  if (act === 'exp-json') return sendFile('asset-ledger-backup-' + todayISO() + '.json', JSON.stringify(S, null, 2));
+  if (act === 'exp-vehicles') {
+    const rows = [['Registration', 'Make', 'Model', 'Year', 'VIN', 'Fuel', 'Department', 'Driver', 'Held as', 'Acquired', 'Odometer at acquisition', 'Latest odometer', 'Price', 'End of life value', 'Rate %', 'Lease per month', 'Lease ends', 'Service every km', 'Downtime cost per day', 'Sold or returned', 'Sale proceeds', 'NBV today']];
+    const now = D(todayISO()) + DAY;
+    S.vehicles.forEach(v => rows.push([v.reg, v.make, v.model, v.year, v.vin, v.fuel, v.dept, v.driver, v.ownership, v.acquired, v.odoStart, latestOdo(v), v.cost, v.salvage, v.rate, v.leaseMonthly, v.leaseEnd, v.serviceIntervalKm, v.downtimePerDay, v.disposed, v.proceeds, v.disposed ? 0 : Math.round(nbvAt(v, now))]));
+    return sendFile('vehicle-register-' + todayISO() + '.csv', toCsv(rows));
+  }
+  if (act === 'exp-expenses') {
+    const rows = [['Date', 'Registration', 'Category', 'Class', 'Amount', 'Odometer', 'Litres', 'Paid to', 'Covers from', 'Covers to', 'Notes']];
+    S.expenses.slice().sort((a, b) => a.date.localeCompare(b.date)).forEach(e => rows.push([e.date, vname(e.vehicleId), (CAT[e.category] || CAT.other).label, (CAT[e.category] || CAT.other).cls, e.amount, e.odometer, e.litres, e.vendor, e.coverFrom, e.coverTo, e.notes]));
+    return sendFile('expenses-' + todayISO() + '.csv', toCsv(rows));
+  }
+  if (act === 'exp-costs') {
+    const P = portfolio(PF(), PT());
+    const keys = BK.map(b => b[0]);
+    const rows = [['Registration', 'Vehicle', 'Period from', 'Period to', ...BK.map(b => b[1]), 'Ownership', 'Direct', 'Indirect', 'Total', 'Km', 'Cost per km']];
+    P.rows.forEach(r => { const c = r.c; rows.push([r.v.reg, [r.v.make, r.v.model].join(' '), S.period.from, S.period.to, ...keys.map(k => Math.round(c[k])), Math.round(c.own), Math.round(c.direct), Math.round(c.indirect), Math.round(c.total), Math.round(c.km), c.km > 0 ? (c.total / c.km).toFixed(2) : '']); });
+    return sendFile('cost-report-' + S.period.from + '-to-' + S.period.to + '.csv', toCsv(rows));
+  }
+  if (act === 'imp') return importForm();
+});
+
+document.addEventListener('change', ev => {
+  const id = ev.target.id;
+  if (id === 'aOwn') syncOwn();
+  if (id === 'xCat') { $('#xFrom').value = ''; $('#xTo').value = ''; syncExp(); }
+  if (id === 'maintVeh') { maintVeh = ev.target.value; render(); }
+  if (id === 'expVeh') { expVeh = ev.target.value; render(); }
+  if (id === 'expCat') { expCat = ev.target.value; render(); }
+  if (id === 'lifeVeh') { lifeVeh = ev.target.value; render(); }
+  if (id === 'vehFilter') { vehFilter = ev.target.value; render(); }
+  if (id === 'schedVeh') { schedVeh = ev.target.value; render(); }
+});
+document.addEventListener('input', ev => {
+  const id = ev.target.id;
+  if (id === 'vehQ') { vehQ = ev.target.value; const pos = ev.target.selectionStart; render(); const q = $('#vehQ'); q.focus(); q.setSelectionRange(pos, pos); }
+  if (id === 'sCur') { S.settings.currency = ev.target.value.trim().toUpperCase() || 'KES'; save(); }
+  if (id === 'sOh') { S.settings.overheadPct = Math.max(0, parseFloat(ev.target.value) || 0); save(); }
+  if (id === 'sLab') { S.settings.labourRate = Math.max(0, parseFloat(ev.target.value) || 0); save(); }
+  if (id === 'xLit' || id === 'xAmt') { const l = numv('xLit'), a = numv('xAmt'); const p = $('#xPpl'); if (p) p.textContent = l > 0 && a > 0 ? nf2.format(a / l) + ' per litre' : ''; }
+});
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape' && modalSave !== null) closeModal(); });
+
+$('#preset').addEventListener('change', e => { if (e.target.value !== 'custom') applyPreset(e.target.value); else S.period.preset = 'custom'; renderPeriod(); persist(); });
+['pFrom', 'pTo'].forEach(id => $('#' + id).addEventListener('change', e => {
+  const v = e.target.value; if (!v) { renderPeriod(); return; }
+  S.period[id === 'pFrom' ? 'from' : 'to'] = v; S.period.preset = 'custom';
+  if (S.period.to < S.period.from) { if (id === 'pFrom') S.period.to = v; else S.period.from = v; }
+  renderPeriod(); persist();
+}));
+window.addEventListener('hashchange', () => { const h = location.hash.slice(1); if (TABS.some(t => t[0] === h) && h !== tab) { tab = h; render(); } });
+
+/* ---------- boot ---------- */
+(function boot() {
+  const saved = load();
+  S = saved || seed();
+  S.settings = Object.assign({ currency: 'KES', overheadPct: 10, labourRate: 2500 }, S.settings);
+  if (!Array.isArray(S.expenses)) S.expenses = [];
+  if (!S.period || !S.period.preset) S.period = { preset: 'ytd', from: '', to: '' };
+  if (S.period.preset !== 'custom' || !S.period.from) applyPreset(S.period.preset === 'custom' ? 'ytd' : S.period.preset);
+  const h = (location.hash || '').slice(1); if (TABS.some(t => t[0] === h)) tab = h;
+  renderPeriod(); render();
+})();
+</script>
+
+</body>
+</html>
